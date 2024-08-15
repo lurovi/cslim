@@ -54,3 +54,21 @@ gp_pi_init = {
     'CONSTANTS': CONSTANTS,
     "p_c": 0
 }
+
+
+def update_gp_config(
+        p_test: float = 0.2,
+        log: int = 1,
+        verbose: int = 1,
+        test_elite: bool = True,
+        max_: bool = False,
+        pressure: int = 2,
+        p_c: float = 0
+) -> None:
+    settings_dict['p_test'] = p_test
+    gp_solve_parameters['log'] = log
+    gp_solve_parameters['verbose'] = verbose
+    gp_solve_parameters['test_elite'] = test_elite
+    gp_solve_parameters['max_'] = max_
+    gp_parameters['selector'] = tournament_selection_min(pressure)
+    gp_pi_init['p_c'] = p_c

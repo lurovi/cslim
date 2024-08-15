@@ -22,7 +22,7 @@ def slim(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
          dataset_name: str = None, slim_version: str = "SLIM+SIG2", pop_size: int = 100,
          n_iter: int = 100, elitism: bool = True, n_elites: int = 1, init_depth: int = 6,
          ms: Callable = generate_random_uniform(0, 1), p_inflate: float = 0.5,
-         log_path: str = os.path.join(os.getcwd(), "log", "slim.csv"), seed: int = 1):
+         pressure: int = 2, log_path: str = os.path.join(os.getcwd(), "log", "slim.csv"), seed: int = 1):
     """
     Main function to execute the SLIM GSGP algorithm on specified datasets
 
@@ -56,6 +56,8 @@ def slim(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
         Probability to apply the inflate mutation
     log_path : str, optional
         The path where is created the log directory where results are saved.
+    pressure : int, optional
+        The tournament size.
     seed : int, optional
         Seed for the randomness
 
@@ -67,8 +69,10 @@ def slim(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
     op, sig, trees = check_slim_version(slim_version=slim_version)
 
     validate_inputs(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test,
-                    pop_size=pop_size, n_iter=n_iter, elitism=elitism, n_elites=n_elites, init_depth=init_depth,
-                    log_path=log_path)
+                    pop_size=pop_size, n_iter=n_iter, elitism=elitism, n_elites=n_elites,
+                    pressure=pressure, init_depth=init_depth, log_path=log_path)
+
+    update_slim_config(pressure=pressure)
 
     slim_gsgp_parameters["two_trees"] = trees
     slim_gsgp_parameters["operator"] = op
@@ -143,7 +147,7 @@ if __name__ == "__main__":
     algorithm = "SLIM+SIG2"
 
     final_tree = slim(X_train=X_train, y_train=y_train, X_test=X_val, y_test=y_val,
-                      dataset_name='ppb', slim_version=algorithm, pop_size=100, n_iter=2)
+                      dataset_name='ppb', slim_version=algorithm, pop_size=100, n_iter=2, pressure=4)
 
     print(show_individual(final_tree, operator='sum'))
     predictions = final_tree.predict(data=X_test, slim_version=algorithm)

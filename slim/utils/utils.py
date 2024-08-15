@@ -460,7 +460,7 @@ def gs_size(y_true, y_pred):
     return y_pred[1]
 
 
-def validate_inputs(X_train, y_train, X_test, y_test, pop_size, n_iter, elitism, n_elites, init_depth, log_path):
+def validate_inputs(X_train, y_train, X_test, y_test, pop_size, n_iter, elitism, n_elites, init_depth, pressure, log_path):
     """
     Validates the inputs based on the specified conditions.
 
@@ -474,6 +474,7 @@ def validate_inputs(X_train, y_train, X_test, y_test, pop_size, n_iter, elitism,
     n_elites (int): Number of elites.
     max_depth (int): Maximum depth.
     init_depth (int): Initial depth.
+    pressure (int): Pressure for the tournament selection (i.e., the tournament size).
     log_path (str): Path for logging.
 
     Raises:
@@ -490,6 +491,7 @@ def validate_inputs(X_train, y_train, X_test, y_test, pop_size, n_iter, elitism,
     assert isinstance(elitism, bool), "Input must be a bool"
     assert isinstance(n_elites, int), "Input must be a int"
     assert isinstance(init_depth, int), "Input must be a int"
+    assert isinstance(pressure, int), "Input must be a int"
     assert isinstance(log_path, str), "Input must be a str"
 
 

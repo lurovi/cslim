@@ -17,7 +17,7 @@ from slim.utils.utils import get_terminals, validate_inputs
 def gp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = None, y_test: torch.Tensor = None,
        dataset_name: str = None, pop_size: int = 100, n_iter: int = 1000, p_xo: float = 0.8,
        elitism: bool = True, n_elites: int = 1, max_depth: int = 17, init_depth: int = 6,
-       log_path: str = os.path.join(os.getcwd(), "log", "gp.csv"), seed: int = 42):
+       pressure: int = 2, log_path: str = os.path.join(os.getcwd(), "log", "gp.csv"), seed: int = 42):
     """
     Main function to execute the StandardGP algorithm on specified datasets
 
@@ -47,6 +47,8 @@ def gp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = None
         The maximum depth for the GP trees.
     init_depth : int, optional
         The depth value for the initial GP trees population.
+    pressure : int, optional
+        The tournament size.
     log_path : str, optional
         The path where is created the log directory where results are saved.
     seed : int, optional
@@ -59,8 +61,8 @@ def gp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = None
     """
 
     validate_inputs(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test,
-                    pop_size=pop_size, n_iter=n_iter, elitism=elitism, n_elites=n_elites, init_depth=init_depth,
-                    log_path=log_path)
+                    pop_size=pop_size, n_iter=n_iter, elitism=elitism, n_elites=n_elites,
+                    pressure=pressure, init_depth=init_depth, log_path=log_path)
     assert 0 <= p_xo <= 1, "p_xo must be a number between 0 and 1"
     assert isinstance(max_depth, int), "Input must be a int"
 
@@ -68,6 +70,8 @@ def gp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = None
         n_elites = 0
 
     unique_run_id = uuid.uuid1()
+
+    update_gp_config(pressure=pressure)
 
     algo = "StandardGP"
     gp_solve_parameters['run_info'] = [algo, unique_run_id, dataset_name]
@@ -131,7 +135,7 @@ if __name__ == "__main__":
 
     final_tree = gp(X_train=X_train, y_train=y_train,
                     X_test=X_val, y_test=y_val,
-                    dataset_name='ppb', pop_size=100, n_iter=10)
+                    dataset_name='ppb', pop_size=100, n_iter=10, pressure=4)
 
     final_tree.print_tree_representation()
     predictions = final_tree.predict(X_test)

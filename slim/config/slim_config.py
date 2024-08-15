@@ -61,3 +61,21 @@ slim_gsgp_pi_init = {
     "p_c": 0
 }
 
+
+def update_slim_config(
+        p_test: float = 0.2,
+        log: int = 1,
+        verbose: int = 1,
+        reconstruct: bool = True,
+        pressure: int = 2,
+        p_xo: float = 0,
+        p_c: float = 0
+) -> None:
+    settings_dict['p_test'] = p_test
+    slim_gsgp_solve_parameters['log'] = log
+    slim_gsgp_solve_parameters['verbose'] = verbose
+    slim_gsgp_solve_parameters['reconstruct'] = reconstruct
+    slim_gsgp_parameters['selector'] = tournament_selection_min_slim(pressure)
+    slim_gsgp_parameters['p_xo'] = p_xo
+    slim_gsgp_parameters['p_m'] = 1 - slim_gsgp_parameters['p_xo']
+    slim_gsgp_pi_init['p_c'] = p_c

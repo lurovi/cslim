@@ -5,7 +5,8 @@ import numpy as np
 import torch
 from slim.algorithms.GP.representations.population import Population
 from slim.algorithms.GP.representations.tree import Tree
-from slim.utils.diversity import niche_entropy
+from slim.cellular.support import create_neighbors_topology_factory, compute_all_possible_neighborhoods, weights_matrix_for_morans_I, simple_selection_process
+from slim.utils.diversity import one_matrix_zero_diagonal, niche_entropy, gsgp_pop_div_from_vectors, global_moran_I
 from slim.utils.logger import logger
 from slim.utils.utils import verbose_reporter
 
@@ -22,6 +23,11 @@ class GP:
         p_m=0.2,
         p_xo=0.8,
         pop_size=100,
+        pop_shape=(100,),
+        torus_dim=0,
+        radius=0,
+        cmp_rate=0.0,
+        pressure=2,
         seed=0,
         settings_dict=None,
     ):
@@ -38,6 +44,11 @@ class GP:
             p_m (float): Probability of mutation.
             p_xo (float): Probability of crossover.
             pop_size (int): Size of the population.
+            pop_shape (tuple): Shape of the grid containing the population in cellular selection (makes no sense if no cellular selection is performed).
+            torus_dim (int): Dimension of the torus in cellular selection (0 if no cellular selection is performed).
+            radius (int): Radius of the torus in cellular selection (makes no sense if no cellular selection is performed).
+            cmp_rate (float): Competitor rate in cellular selection (makes no sense if no cellular selection is performed).
+            pressure (int): The tournament size.
             seed (int): Seed for random number generation.
             settings_dict (dict): Additional settings dictionary.
         """
@@ -49,6 +60,11 @@ class GP:
         self.p_xo = p_xo
         self.initializer = initializer
         self.pop_size = pop_size
+        self.pop_shape = pop_shape
+        self.torus_dim = torus_dim
+        self.radius = radius
+        self.cmp_rate = cmp_rate
+        self.pressure = pressure
         self.seed = seed
         self.find_elit_func = find_elit_func
         self.settings_dict = settings_dict
@@ -56,6 +72,9 @@ class GP:
         Tree.FUNCTIONS = pi_init["FUNCTIONS"]
         Tree.TERMINALS = pi_init["TERMINALS"]
         Tree.CONSTANTS = pi_init["CONSTANTS"]
+
+        self.is_cellular_selection = self.torus_dim != 0
+        self.neighbors_topology_factory = create_neighbors_topology_factory(pop_size=self.pop_size, pop_shape=self.pop_shape, torus_dim=self.torus_dim, radius=self.radius, pressure=self.pressure)
 
     def solve(
         self,
@@ -108,6 +127,9 @@ class GP:
         np.random.seed(self.seed)
         random.seed(self.seed)
 
+        all_possible_coordinates, all_neighborhoods_indices = compute_all_possible_neighborhoods(pop_size=self.pop_size, pop_shape=self.pop_shape, is_cellular_selection=self.is_cellular_selection, neighbors_topology_factory=self.neighbors_topology_factory)
+        weights_matrix_moran = weights_matrix_for_morans_I(pop_size=self.pop_size, is_cellular_selection=self.is_cellular_selection, all_possible_coordinates=all_possible_coordinates, all_neighborhoods_indices=all_neighborhoods_indices)
+
         start = time.time()
 
         # Initialize the population
@@ -124,7 +146,7 @@ class GP:
 
         if log != 0:
             self.log_initial_population(
-                population, end - start, log, log_path, run_info
+                population, end - start, log, log_path, run_info, weights_matrix_moran, X_train
             )
 
         if verbose != 0:
@@ -146,6 +168,8 @@ class GP:
                 elitism,
                 X_train,
                 y_train,
+                all_possible_coordinates,
+                all_neighborhoods_indices,
             )
             population = offs_pop
             end = time.time()
@@ -157,7 +181,7 @@ class GP:
 
             if log != 0:
                 self.log_generation(
-                    it, population, end - start, log, log_path, run_info
+                    it, population, end - start, log, log_path, run_info, weights_matrix_moran, X_train
                 )
 
             if verbose != 0:
@@ -179,6 +203,8 @@ class GP:
         elitism,
         X_train,
         y_train,
+        all_possible_coordinates,
+        all_neighborhoods_indices,
     ):
         """
         Evolve the population for one generation.
@@ -202,12 +228,15 @@ class GP:
         if elitism:
             offs_pop.extend(self.elites)
 
-        while len(offs_pop) < self.pop_size:
-            if random.random() < self.p_xo:
-                p1, p2 = self.selector(population), self.selector(population)
-                while p1 == p2:
-                    p1, p2 = self.selector(population), self.selector(population)
+        indexed_population = [(i, population.population[i]) for i in range(self.pop_size)]
+        neighbors_topology = self.neighbors_topology_factory.create(indexed_population, clone=False)
+        current_coordinate_index = 0
 
+        while len(offs_pop) < self.pop_size:
+            current_coordinate = all_possible_coordinates[current_coordinate_index]
+            p1, p2 = simple_selection_process(is_cellular_selection=self.is_cellular_selection, competitor_rate=self.cmp_rate, neighbors_topology=neighbors_topology, all_neighborhoods_indices=all_neighborhoods_indices, coordinate=current_coordinate)
+
+            if random.random() < self.p_xo:
                 offs1, offs2 = self.crossover(
                     p1.repr_,
                     p2.repr_,
@@ -229,7 +258,6 @@ class GP:
 
                 offspring = [offs1, offs2]
             else:
-                p1 = self.selector(population)
                 offs1 = self.mutator(p1.repr_, num_of_nodes=p1.node_count)
 
                 if max_depth is not None:
@@ -239,6 +267,7 @@ class GP:
                 offspring = [offs1]
 
             offs_pop.extend([Tree(child) for child in offspring])
+            current_coordinate_index += 1
 
         if len(offs_pop) > population.size:
             offs_pop = offs_pop[: population.size]
@@ -247,7 +276,7 @@ class GP:
         offs_pop.evaluate(ffunction, X=X_train, y=y_train)
         return offs_pop, start
 
-    def log_initial_population(self, population, elapsed_time, log, log_path, run_info):
+    def log_initial_population(self, population, elapsed_time, log, log_path, run_info, weights_matrix_moran, X_train):
         """
         Log the initial population.
 
@@ -287,6 +316,53 @@ class GP:
                 " ".join([str(f) for f in population.fit]),
                 log,
             ]
+        elif log == 5:
+            add_info = [
+                self.elite.repr_,
+                float(self.elite.fitness),
+                float(self.elite.test_fitness),
+                int(self.elite.node_count),
+                float(niche_entropy([ind.repr_ for ind in population.population])),
+                gsgp_pop_div_from_vectors(
+                    torch.stack(
+                        [
+                            (
+                                ind.train_semantics
+                                if ind.train_semantics.shape != torch.Size([])
+                                else ind.train_semantics.repeat(len(X_train))
+                            )
+                            for ind in population.population
+                        ]
+                    )
+                ),
+                global_moran_I(
+                    [
+                        (
+                            ind.train_semantics
+                            if ind.train_semantics.shape != torch.Size([])
+                            else ind.train_semantics.repeat(len(X_train))
+                        )
+                        for ind in population.population
+                    ],
+                    w=one_matrix_zero_diagonal(self.pop_size)
+                ),
+                global_moran_I(
+                    [
+                        (
+                            ind.train_semantics
+                            if ind.train_semantics.shape != torch.Size([])
+                            else ind.train_semantics.repeat(len(X_train))
+                        )
+                        for ind in population.population
+                    ],
+                    w=weights_matrix_moran
+                ),
+                np.mean(population.fit),
+                np.std(population.fit),
+                " ".join([str(ind.node_count) for ind in population.population]),
+                " ".join([str(f) for f in population.fit]),
+                log,
+            ]
         else:
             add_info = [self.elite.test_fitness, self.elite.node_count, log]
 
@@ -302,7 +378,7 @@ class GP:
         )
 
     def log_generation(
-        self, generation, population, elapsed_time, log, log_path, run_info
+        self, generation, population, elapsed_time, log, log_path, run_info, weights_matrix_moran, X_train
     ):
         """
         Log the results for the current generation.
@@ -339,6 +415,53 @@ class GP:
                 self.elite.test_fitness,
                 self.elite.node_count,
                 float(niche_entropy([ind.repr_ for ind in population.population])),
+                np.std(population.fit),
+                " ".join([str(ind.node_count) for ind in population.population]),
+                " ".join([str(f) for f in population.fit]),
+                log,
+            ]
+        elif log == 5:
+            add_info = [
+                self.elite.repr_,
+                float(self.elite.fitness),
+                float(self.elite.test_fitness),
+                int(self.elite.node_count),
+                float(niche_entropy([ind.repr_ for ind in population.population])),
+                gsgp_pop_div_from_vectors(
+                    torch.stack(
+                        [
+                            (
+                                ind.train_semantics
+                                if ind.train_semantics.shape != torch.Size([])
+                                else ind.train_semantics.repeat(len(X_train))
+                            )
+                            for ind in population.population
+                        ]
+                    )
+                ),
+                global_moran_I(
+                    [
+                        (
+                            ind.train_semantics
+                            if ind.train_semantics.shape != torch.Size([])
+                            else ind.train_semantics.repeat(len(X_train))
+                        )
+                        for ind in population.population
+                    ],
+                    w=one_matrix_zero_diagonal(self.pop_size)
+                ),
+                global_moran_I(
+                    [
+                        (
+                            ind.train_semantics
+                            if ind.train_semantics.shape != torch.Size([])
+                            else ind.train_semantics.repeat(len(X_train))
+                        )
+                        for ind in population.population
+                    ],
+                    w=weights_matrix_moran
+                ),
+                np.mean(population.fit),
                 np.std(population.fit),
                 " ".join([str(ind.node_count) for ind in population.population]),
                 " ".join([str(f) for f in population.fit]),

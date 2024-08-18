@@ -5,7 +5,7 @@ This module provides various error metrics functions for evaluating machine lear
 import torch
 
 
-def rmse(y_true: torch.Tensor, y_pred: torch.Tensor) -> torch.Tensor:
+def rmse(y_true: torch.Tensor, y_pred: torch.Tensor) -> float:
     """
     Compute Root Mean Squared Error (RMSE).
 
@@ -14,14 +14,14 @@ def rmse(y_true: torch.Tensor, y_pred: torch.Tensor) -> torch.Tensor:
         y_pred (torch.Tensor): Predicted values.
 
     Returns:
-        torch.Tensor: RMSE value.
+        float: RMSE value.
     """
-    return torch.sqrt(
+    return float(torch.sqrt(
         torch.mean(torch.square(torch.sub(y_true, y_pred)), dim=len(y_pred.shape) - 1)
-    )
+    ).item())
 
 
-def mse(y_true: torch.Tensor, y_pred: torch.Tensor) -> torch.Tensor:
+def mse(y_true: torch.Tensor, y_pred: torch.Tensor) -> float:
     """
     Compute Mean Squared Error (MSE).
 
@@ -30,14 +30,14 @@ def mse(y_true: torch.Tensor, y_pred: torch.Tensor) -> torch.Tensor:
         y_pred (torch.Tensor): Predicted values.
 
     Returns:
-        torch.Tensor: MSE value.
+        float: MSE value.
     """
-    return torch.mean(
+    return float(torch.mean(
         torch.square(torch.sub(y_true, y_pred)), dim=len(y_pred.shape) - 1
-    )
+    ).item())
 
 
-def mae(y_true: torch.Tensor, y_pred: torch.Tensor) -> torch.Tensor:
+def mae(y_true: torch.Tensor, y_pred: torch.Tensor) -> float:
     """
     Compute Mean Absolute Error (MAE).
 
@@ -46,12 +46,12 @@ def mae(y_true: torch.Tensor, y_pred: torch.Tensor) -> torch.Tensor:
         y_pred (torch.Tensor): Predicted values.
 
     Returns:
-        torch.Tensor: MAE value.
+        float: MAE value.
     """
-    return torch.mean(torch.abs(torch.sub(y_true, y_pred)), dim=len(y_pred.shape) - 1)
+    return float(torch.mean(torch.abs(torch.sub(y_true, y_pred)), dim=len(y_pred.shape) - 1).item())
 
 
-def mae_int(y_true: torch.Tensor, y_pred: torch.Tensor) -> torch.Tensor:
+def mae_int(y_true: torch.Tensor, y_pred: torch.Tensor) -> float:
     """
     Compute Mean Absolute Error (MAE) for integer values.
 
@@ -60,11 +60,11 @@ def mae_int(y_true: torch.Tensor, y_pred: torch.Tensor) -> torch.Tensor:
         y_pred (torch.Tensor): Predicted values.
 
     Returns:
-        torch.Tensor: MAE value for integer predictions.
+        float: MAE value for integer predictions.
     """
-    return torch.mean(
+    return float(torch.mean(
         torch.abs(torch.sub(y_true, torch.round(y_pred))), dim=len(y_pred.shape) - 1
-    )
+    ).item())
 
 
 def signed_errors(y_true: torch.Tensor, y_pred: torch.Tensor) -> torch.Tensor:

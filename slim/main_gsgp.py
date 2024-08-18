@@ -15,8 +15,8 @@ from typing import Callable
 def gsgp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = None, y_test: torch.Tensor = None,
          dataset_name: str = None, pop_size: int = 100, n_iter: int = 100, p_xo: float = 0.0, elitism: bool = True,
          n_elites: int = 1, init_depth: int = 8, ms: Callable = generate_random_uniform(0, 1),
-         pressure: int = 2, log_path: str = os.path.join(os.getcwd(), "log", "gsgp.csv"),
-         seed: int = 1):
+         pressure: int = 2, torus_dim: int = 0, radius: int = 0, cmp_rate: float = 0.0, pop_shape: tuple[int, ...] = tuple(),
+         log_path: str = os.path.join(os.getcwd(), "log", "gsgp.csv"), seed: int = 1):
     """
     Main function to execute the Standard GSGP algorithm on specified datasets
 
@@ -48,6 +48,14 @@ def gsgp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
         A function that will generate the mutation step
     pressure : int, optional
         The tournament size.
+    torus_dim: int, optional
+        Dimension of the torus in cellular selection (0 if no cellular selection is performed).
+    radius: int, optional
+        Radius of the torus in cellular selection (makes no sense if no cellular selection is performed).
+    cmp_rate: float, optional
+        Competitor rate in cellular selection (makes no sense if no cellular selection is performed).
+    pop_shape: tuple, optional
+        Shape of the grid containing the population in cellular selection (makes no sense if no cellular selection is performed).
     log_path : str, optional
         The path where is created the log directory where results are saved.
     seed : int, optional
@@ -60,9 +68,20 @@ def gsgp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
         Returns the best individual at the last generation.
     """
 
+    if pop_shape == tuple():
+        pop_shape = (pop_size,)
+    
+    if torus_dim == 0:
+        radius = 0
+        cmp_rate = 0.0
+        pop_shape = (pop_size,)
+    else:
+        pressure = 0
+
     validate_inputs(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test,
                     pop_size=pop_size, n_iter=n_iter, elitism=elitism, n_elites=n_elites,
-                    pressure=pressure, init_depth=init_depth, log_path=log_path)
+                    pressure=pressure, torus_dim=torus_dim, radius=radius, cmp_rate=cmp_rate, pop_shape=pop_shape,
+                    init_depth=init_depth, log_path=log_path)
     assert 0 <= p_xo <= 1, "p_xo must be a number between 0 and 1"
 
     if not elitism:
@@ -70,7 +89,7 @@ def gsgp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
 
     unique_run_id = uuid.uuid1()
 
-    update_gsgp_config(pressure=pressure)
+    update_gsgp_config(pressure=pressure, torus_dim=torus_dim, radius=radius, cmp_rate=cmp_rate)
 
     algo_name = "StandardGSGP"
     gsgp_solve_parameters["run_info"] = [algo_name, unique_run_id, dataset_name]
@@ -84,6 +103,7 @@ def gsgp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
     gsgp_parameters["p_xo"] = p_xo
     gsgp_parameters["p_m"] = 1 - gsgp_parameters["p_xo"]
     gsgp_parameters["pop_size"] = pop_size
+    gsgp_parameters["pop_shape"] = pop_shape
     gsgp_parameters["ms"] = ms
 
     gsgp_solve_parameters["n_iter"] = n_iter

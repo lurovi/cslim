@@ -31,7 +31,7 @@ settings_dict = {"p_test": 0.2}
 
 # GP solve parameters
 gp_solve_parameters = {
-    "log": 1,
+    "log": 5,
     "verbose": 1,
     "test_elite": True,
     "run_info": None,
@@ -43,10 +43,14 @@ gp_solve_parameters = {
 # GP parameters
 gp_parameters = {
     "initializer": rhh,
+    "pressure": 2,
     "selector": tournament_selection_min(2),
     "crossover": crossover_trees(FUNCTIONS),
     "settings_dict": settings_dict,
-    "find_elit_func": get_best_max if gp_solve_parameters["max_"] else get_best_min
+    "find_elit_func": get_best_max if gp_solve_parameters["max_"] else get_best_min,
+    "torus_dim": 0,
+    "radius": 0,
+    "cmp_rate": 0.0
 }
 
 gp_pi_init = {
@@ -63,12 +67,20 @@ def update_gp_config(
         test_elite: bool = True,
         max_: bool = False,
         pressure: int = 2,
-        p_c: float = 0
+        p_c: float = 0,
+        torus_dim: int = 0,
+        radius: int = 0,
+        cmp_rate: float = 0.0
 ) -> None:
     settings_dict['p_test'] = p_test
     gp_solve_parameters['log'] = log
     gp_solve_parameters['verbose'] = verbose
     gp_solve_parameters['test_elite'] = test_elite
     gp_solve_parameters['max_'] = max_
+    gp_parameters['pressure'] = pressure
     gp_parameters['selector'] = tournament_selection_min(pressure)
     gp_pi_init['p_c'] = p_c
+
+    gp_parameters['torus_dim'] = torus_dim
+    gp_parameters['radius'] = radius
+    gp_parameters['cmp_rate'] = cmp_rate

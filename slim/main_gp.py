@@ -17,7 +17,8 @@ from slim.utils.utils import get_terminals, validate_inputs
 def gp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = None, y_test: torch.Tensor = None,
        dataset_name: str = None, pop_size: int = 100, n_iter: int = 1000, p_xo: float = 0.8,
        elitism: bool = True, n_elites: int = 1, max_depth: int = 17, init_depth: int = 6,
-       pressure: int = 2, log_path: str = os.path.join(os.getcwd(), "log", "gp.csv"), seed: int = 42):
+       pressure: int = 2, torus_dim: int = 0, radius: int = 0, cmp_rate: float = 0.0, pop_shape: tuple[int, ...] = tuple(),
+       log_path: str = os.path.join(os.getcwd(), "log", "gp.csv"), seed: int = 42):
     """
     Main function to execute the StandardGP algorithm on specified datasets
 
@@ -49,6 +50,14 @@ def gp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = None
         The depth value for the initial GP trees population.
     pressure : int, optional
         The tournament size.
+    torus_dim: int, optional
+        Dimension of the torus in cellular selection (0 if no cellular selection is performed).
+    radius: int, optional
+        Radius of the torus in cellular selection (makes no sense if no cellular selection is performed).
+    cmp_rate: float, optional
+        Competitor rate in cellular selection (makes no sense if no cellular selection is performed).
+    pop_shape: tuple, optional
+        Shape of the grid containing the population in cellular selection (makes no sense if no cellular selection is performed).
     log_path : str, optional
         The path where is created the log directory where results are saved.
     seed : int, optional
@@ -60,9 +69,20 @@ def gp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = None
         Returns the best individual at the last generation.
     """
 
+    if pop_shape == tuple():
+        pop_shape = (pop_size,)
+    
+    if torus_dim == 0:
+        radius = 0
+        cmp_rate = 0.0
+        pop_shape = (pop_size,)
+    else:
+        pressure = 0
+
     validate_inputs(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test,
                     pop_size=pop_size, n_iter=n_iter, elitism=elitism, n_elites=n_elites,
-                    pressure=pressure, init_depth=init_depth, log_path=log_path)
+                    pressure=pressure, torus_dim=torus_dim, radius=radius, cmp_rate=cmp_rate, pop_shape=pop_shape,
+                    init_depth=init_depth, log_path=log_path)
     assert 0 <= p_xo <= 1, "p_xo must be a number between 0 and 1"
     assert isinstance(max_depth, int), "Input must be a int"
 
@@ -71,7 +91,7 @@ def gp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = None
 
     unique_run_id = uuid.uuid1()
 
-    update_gp_config(pressure=pressure)
+    update_gp_config(pressure=pressure, torus_dim=torus_dim, radius=radius, cmp_rate=cmp_rate)
 
     algo = "StandardGP"
     gp_solve_parameters['run_info'] = [algo, unique_run_id, dataset_name]
@@ -84,6 +104,7 @@ def gp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = None
     gp_parameters["p_xo"] = p_xo
     gp_parameters["p_m"] = 1 - gp_parameters["p_xo"]
     gp_parameters["pop_size"] = pop_size
+    gp_parameters["pop_shape"] = pop_shape
     gp_parameters["mutator"] = mutate_tree_subtree(
         gp_pi_init['init_depth'], TERMINALS, CONSTANTS, FUNCTIONS, p_c=gp_pi_init['p_c']
     )

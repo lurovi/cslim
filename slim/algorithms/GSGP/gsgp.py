@@ -2,6 +2,7 @@
 Genetic Programming (GP) and Geometric Semantic Genetic Programming (GSGP) modules.
 """
 
+import math
 import random
 import time
 
@@ -12,7 +13,8 @@ from slim.algorithms.GSGP.representations.population import Population
 from slim.algorithms.GSGP.representations.tree import Tree
 from slim.algorithms.GSGP.representations.tree_utils import (
     nested_depth_calculator, nested_nodes_calculator)
-from slim.utils.diversity import gsgp_pop_div_from_vectors
+from slim.cellular.support import one_matrix_zero_diagonal, create_neighbors_topology_factory, compute_all_possible_neighborhoods, weights_matrix_for_morans_I, simple_selection_process
+from slim.utils.diversity import gsgp_pop_div_from_vectors, global_moran_I
 from slim.utils.logger import logger
 from slim.utils.utils import get_random_tree, verbose_reporter
 
@@ -34,6 +36,11 @@ class GSGP:
         p_m=0.8,
         p_xo=0.2,
         pop_size=100,
+        pop_shape=(100,),
+        torus_dim=0,
+        radius=0,
+        cmp_rate=0.0,
+        pressure=2,
         seed=0,
         settings_dict=None,
     ):
@@ -51,6 +58,11 @@ class GSGP:
             p_m (float): Probability of mutation.
             p_xo (float): Probability of crossover.
             pop_size (int): Size of the population.
+            pop_shape (tuple): Shape of the grid containing the population in cellular selection (makes no sense if no cellular selection is performed).
+            torus_dim (int): Dimension of the torus in cellular selection (0 if no cellular selection is performed).
+            radius (int): Radius of the torus in cellular selection (makes no sense if no cellular selection is performed).
+            cmp_rate (float): Competitor rate in cellular selection (makes no sense if no cellular selection is performed).
+            pressure (int): The tournament size.
             seed (int): Seed for random number generation.
             settings_dict (dict): Additional settings dictionary.
         """
@@ -64,6 +76,11 @@ class GSGP:
         self.p_xo = p_xo
         self.initializer = initializer
         self.pop_size = pop_size
+        self.pop_shape = pop_shape
+        self.torus_dim = torus_dim
+        self.radius = radius
+        self.cmp_rate = cmp_rate
+        self.pressure = pressure
         self.seed = seed
         self.settings_dict = settings_dict
         self.find_elit_func = find_elit_func
@@ -74,6 +91,9 @@ class GSGP:
         GP_Tree.FUNCTIONS = pi_init["FUNCTIONS"]
         GP_Tree.TERMINALS = pi_init["TERMINALS"]
         GP_Tree.CONSTANTS = pi_init["CONSTANTS"]
+
+        self.is_cellular_selection = self.torus_dim != 0
+        self.neighbors_topology_factory = create_neighbors_topology_factory(pop_size=self.pop_size, pop_shape=self.pop_shape, torus_dim=self.torus_dim, radius=self.radius, pressure=self.pressure)
 
     def solve(
         self,
@@ -119,6 +139,9 @@ class GSGP:
         torch.manual_seed(self.seed)
         np.random.seed(self.seed)
         random.seed(self.seed)
+
+        all_possible_coordinates, all_neighborhoods_indices = compute_all_possible_neighborhoods(pop_size=self.pop_size, pop_shape=self.pop_shape, is_cellular_selection=self.is_cellular_selection, neighbors_topology_factory=self.neighbors_topology_factory)
+        weights_matrix_moran = weights_matrix_for_morans_I(pop_size=self.pop_size, is_cellular_selection=self.is_cellular_selection, all_possible_coordinates=all_possible_coordinates, all_neighborhoods_indices=all_neighborhoods_indices)
 
         start = time.time()
 
@@ -197,6 +220,52 @@ class GSGP:
                     " ".join([str(f) for f in population.fit]),
                     log,
                 ]
+            elif log == 5:
+
+                add_info = [
+                    float(self.elite.fitness),
+                    float(self.elite.test_fitness),
+                    round(math.log10(int(self.elite.nodes)), 6),
+                    gsgp_pop_div_from_vectors(
+                        torch.stack(
+                            [
+                                (
+                                    ind.train_semantics
+                                    if ind.train_semantics.shape != torch.Size([])
+                                    else ind.train_semantics.repeat(len(X_train))
+                                )
+                                for ind in population.population
+                            ]
+                        )
+                    ),
+                    global_moran_I(
+                        [
+                            (
+                                ind.train_semantics
+                                if ind.train_semantics.shape != torch.Size([])
+                                else ind.train_semantics.repeat(len(X_train))
+                            )
+                            for ind in population.population
+                        ],
+                        w=one_matrix_zero_diagonal(self.pop_size)
+                    ),
+                    global_moran_I(
+                        [
+                            (
+                                ind.train_semantics
+                                if ind.train_semantics.shape != torch.Size([])
+                                else ind.train_semantics.repeat(len(X_train))
+                            )
+                            for ind in population.population
+                        ],
+                        w=weights_matrix_moran
+                    ),
+                    np.mean(population.fit),
+                    np.std(population.fit),
+                    " ".join([str(round(math.log10(ind.nodes), 6)) for ind in population.population]),
+                    " ".join([str(f) for f in population.fit]),
+                    log,
+                ]
 
             else:
 
@@ -228,14 +297,15 @@ class GSGP:
             if elitism:
                 offs_pop.append(self.elite)
 
+            indexed_population = [(i, population.population[i]) for i in range(self.pop_size)]
+            neighbors_topology = self.neighbors_topology_factory.create(indexed_population, clone=False)
+            current_coordinate_index = 0
+
             while len(offs_pop) < self.pop_size:
+                current_coordinate = all_possible_coordinates[current_coordinate_index]
+                p1, p2 = simple_selection_process(is_cellular_selection=self.is_cellular_selection, competitor_rate=self.cmp_rate, neighbors_topology=neighbors_topology, all_neighborhoods_indices=all_neighborhoods_indices, coordinate=current_coordinate)
 
                 if random.random() < self.p_xo:
-                    p1, p2 = self.selector(population), self.selector(population)
-
-                    while p1 == p2:
-                        p1, p2 = self.selector(population), self.selector(population)
-
                     r_tree = get_random_tree(
                         max_depth=self.pi_init["init_depth"],
                         FUNCTIONS=self.pi_init["FUNCTIONS"],
@@ -272,7 +342,6 @@ class GSGP:
                     offs_pop.append(offs1)
 
                 else:
-                    p1 = self.selector(population)
                     ms_ = self.ms()
 
                     if self.mutator.__name__ in [
@@ -353,6 +422,7 @@ class GSGP:
                             self.mutator,
                             [p1.depth, *[rt.depth for rt in mutation_trees]],
                         )
+                current_coordinate_index += 1
 
             if len(offs_pop) > population.size:
                 offs_pop = offs_pop[: population.size]
@@ -421,6 +491,52 @@ class GSGP:
                         ),
                         np.std(population.fit),
                         " ".join([str(ind.nodes) for ind in population.population]),
+                        " ".join([str(f) for f in population.fit]),
+                        log,
+                    ]
+                elif log == 5:
+
+                    add_info = [
+                        float(self.elite.fitness),
+                        float(self.elite.test_fitness),
+                        round(math.log10(int(self.elite.nodes)), 6),
+                        gsgp_pop_div_from_vectors(
+                            torch.stack(
+                                [
+                                    (
+                                        ind.train_semantics
+                                        if ind.train_semantics.shape != torch.Size([])
+                                        else ind.train_semantics.repeat(len(X_train))
+                                    )
+                                    for ind in population.population
+                                ]
+                            )
+                        ),
+                        global_moran_I(
+                            [
+                                (
+                                    ind.train_semantics
+                                    if ind.train_semantics.shape != torch.Size([])
+                                    else ind.train_semantics.repeat(len(X_train))
+                                )
+                                for ind in population.population
+                            ],
+                            w=one_matrix_zero_diagonal(self.pop_size)
+                        ),
+                        global_moran_I(
+                            [
+                                (
+                                    ind.train_semantics
+                                    if ind.train_semantics.shape != torch.Size([])
+                                    else ind.train_semantics.repeat(len(X_train))
+                                )
+                                for ind in population.population
+                            ],
+                            w=weights_matrix_moran
+                        ),
+                        np.mean(population.fit),
+                        np.std(population.fit),
+                        " ".join([str(round(math.log10(ind.nodes), 6)) for ind in population.population]),
                         " ".join([str(f) for f in population.fit]),
                         log,
                     ]

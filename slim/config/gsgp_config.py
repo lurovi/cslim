@@ -28,7 +28,7 @@ settings_dict = {"p_test": 0.2}
 
 # GSGP solve parameters
 gsgp_solve_parameters = {
-    "log": 1,
+    "log": 5,
     "verbose": 1,
     "test_elite": True,
     "run_info": None,
@@ -39,11 +39,15 @@ gsgp_solve_parameters = {
 # GSGP parameters
 gsgp_parameters = {
     "initializer": rhh,
+    "pressure": 2,
     "selector": tournament_selection_min(2),
     "crossover": geometric_crossover,
     "mutator": standard_geometric_mutation,
     "settings_dict": settings_dict,
-    "find_elit_func": get_best_min
+    "find_elit_func": get_best_min,
+    "torus_dim": 0,
+    "radius": 0,
+    "cmp_rate": 0.0
 }
 
 gsgp_pi_init = {
@@ -60,12 +64,20 @@ def update_gsgp_config(
         test_elite: bool = True,
         reconstruct: bool = True,
         pressure: int = 2,
-        p_c: float = 0
+        p_c: float = 0,
+        torus_dim: int = 0,
+        radius: int = 0,
+        cmp_rate: float = 0.0
 ) -> None:
     settings_dict['p_test'] = p_test
     gsgp_solve_parameters['log'] = log
     gsgp_solve_parameters['verbose'] = verbose
     gsgp_solve_parameters['test_elite'] = test_elite
     gsgp_solve_parameters['reconstruct'] = reconstruct
+    gsgp_parameters['pressure'] = pressure
     gsgp_parameters['selector'] = tournament_selection_min(pressure)
     gsgp_pi_init['p_c'] = p_c
+
+    gsgp_parameters['torus_dim'] = torus_dim
+    gsgp_parameters['radius'] = radius
+    gsgp_parameters['cmp_rate'] = cmp_rate

@@ -22,7 +22,8 @@ def slim(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
          dataset_name: str = None, slim_version: str = "SLIM+SIG2", pop_size: int = 100,
          n_iter: int = 100, elitism: bool = True, n_elites: int = 1, init_depth: int = 6,
          ms: Callable = generate_random_uniform(0, 1), p_inflate: float = 0.5,
-         pressure: int = 2, log_path: str = os.path.join(os.getcwd(), "log", "slim.csv"), seed: int = 1):
+         pressure: int = 2, torus_dim: int = 0, radius: int = 0, cmp_rate: float = 0.0, pop_shape: tuple[int, ...] = tuple(),
+         log_path: str = os.path.join(os.getcwd(), "log", "slim.csv"), seed: int = 1):
     """
     Main function to execute the SLIM GSGP algorithm on specified datasets
 
@@ -58,6 +59,14 @@ def slim(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
         The path where is created the log directory where results are saved.
     pressure : int, optional
         The tournament size.
+    torus_dim: int, optional
+        Dimension of the torus in cellular selection (0 if no cellular selection is performed).
+    radius: int, optional
+        Radius of the torus in cellular selection (makes no sense if no cellular selection is performed).
+    cmp_rate: float, optional
+        Competitor rate in cellular selection (makes no sense if no cellular selection is performed).
+    pop_shape: tuple, optional
+        Shape of the grid containing the population in cellular selection (makes no sense if no cellular selection is performed).
     seed : int, optional
         Seed for the randomness
 
@@ -68,11 +77,22 @@ def slim(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
     """
     op, sig, trees = check_slim_version(slim_version=slim_version)
 
+    if pop_shape == tuple():
+        pop_shape = (pop_size,)
+    
+    if torus_dim == 0:
+        radius = 0
+        cmp_rate = 0.0
+        pop_shape = (pop_size,)
+    else:
+        pressure = 0
+
     validate_inputs(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test,
                     pop_size=pop_size, n_iter=n_iter, elitism=elitism, n_elites=n_elites,
-                    pressure=pressure, init_depth=init_depth, log_path=log_path)
+                    pressure=pressure, torus_dim=torus_dim, radius=radius, cmp_rate=cmp_rate, pop_shape=pop_shape,
+                    init_depth=init_depth, log_path=log_path)
 
-    update_slim_config(pressure=pressure)
+    update_slim_config(pressure=pressure, torus_dim=torus_dim, radius=radius, cmp_rate=cmp_rate)
 
     slim_gsgp_parameters["two_trees"] = trees
     slim_gsgp_parameters["operator"] = op
@@ -89,6 +109,7 @@ def slim(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
 
     slim_gsgp_parameters["p_m"] = 1 - slim_gsgp_parameters["p_xo"]
     slim_gsgp_parameters["pop_size"] = pop_size
+    slim_gsgp_parameters["pop_shape"] = pop_shape
     slim_gsgp_parameters["inflate_mutator"] = inflate_mutation(
         FUNCTIONS=FUNCTIONS,
         TERMINALS=TERMINALS,

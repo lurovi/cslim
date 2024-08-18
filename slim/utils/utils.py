@@ -126,7 +126,7 @@ def tensor_dimensioned_sum(dim):
 
 
 def verbose_reporter(
-        dataset, generation, pop_val_fitness, pop_test_fitness, timing, nodes
+        dataset, generation, pop_val_fitness, pop_test_fitness, timing, nodes, scale_nodes_with_log10=False
 ):
     """
     Prints a formatted report of generation, fitness values, timing, and node count.
@@ -143,6 +143,8 @@ def verbose_reporter(
         Time taken for the process.
     nodes : int
         Count of nodes in the population.
+    scale_nodes_with_log10 : bool
+        If True, a log10 is applied to each number of nodes to avoid getting large numbers and possibly overflow (default is False).
 
     Returns
     -------
@@ -169,7 +171,8 @@ def verbose_reporter(
         test_text_init = "|" + " " * 3 + "None" + " " * (23 - digits_test_fit) + "|"
         test_text = " " * 3 + "None" + " " * (23 - digits_test_fit) + "|"
     digits_timing = len(str(timing))
-    digits_nodes = len(str(nodes))
+    nodes_ = round(math.log10(nodes), 6) if scale_nodes_with_log10 else nodes
+    digits_nodes = len(str(nodes_))
 
     if generation == 0:
         print("Verbose Reporter")
@@ -202,7 +205,7 @@ def verbose_reporter(
             + " " * (21 - digits_timing)
             + "|"
             + " " * 6
-            + str(nodes)
+            + str(nodes_)
             + " " * (12 - digits_nodes)
             + "|"
         )
@@ -227,7 +230,7 @@ def verbose_reporter(
             + " " * (21 - digits_timing)
             + "|"
             + " " * 6
-            + str(nodes)
+            + str(nodes_)
             + " " * (12 - digits_nodes)
             + "|"
         )
@@ -460,7 +463,7 @@ def gs_size(y_true, y_pred):
     return y_pred[1]
 
 
-def validate_inputs(X_train, y_train, X_test, y_test, pop_size, n_iter, elitism, n_elites, init_depth, pressure, log_path):
+def validate_inputs(X_train, y_train, X_test, y_test, pop_size, n_iter, elitism, n_elites, init_depth, pressure, torus_dim, radius, cmp_rate, pop_shape, log_path):
     """
     Validates the inputs based on the specified conditions.
 
@@ -475,6 +478,10 @@ def validate_inputs(X_train, y_train, X_test, y_test, pop_size, n_iter, elitism,
     max_depth (int): Maximum depth.
     init_depth (int): Initial depth.
     pressure (int): Pressure for the tournament selection (i.e., the tournament size).
+    torus_dim (int): Dimension of the torus in cellular selection (0 if no cellular selection is performed).
+    radius (int): Radius of the torus in cellular selection (makes no sense if no cellular selection is performed).
+    cmp_rate (float): Competitor rate in cellular selection (makes no sense if no cellular selection is performed).
+    pop_shape (tuple): Shape of the grid containing the population in cellular selection (makes no sense if no cellular selection is performed).
     log_path (str): Path for logging.
 
     Raises:
@@ -492,6 +499,10 @@ def validate_inputs(X_train, y_train, X_test, y_test, pop_size, n_iter, elitism,
     assert isinstance(n_elites, int), "Input must be a int"
     assert isinstance(init_depth, int), "Input must be a int"
     assert isinstance(pressure, int), "Input must be a int"
+    assert isinstance(torus_dim, int), "Input must be a int"
+    assert isinstance(radius, int), "Input must be a int"
+    assert isinstance(cmp_rate, float), "Input must be a float"
+    assert isinstance(pop_shape, tuple), "Input must be a tuple"
     assert isinstance(log_path, str), "Input must be a str"
 
 

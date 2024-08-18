@@ -1,4 +1,5 @@
 import csv
+import math
 import os.path
 from copy import copy
 from uuid import UUID
@@ -53,6 +54,7 @@ def logger(
     additional_infos: list = None,
     run_info: list = None,
     seed: int = 0,
+    scale_nodes_with_log10: bool = False
 ) -> None:
     """
     Logs information into a CSV file.
@@ -66,6 +68,7 @@ def logger(
         additional_infos (list, optional): Population's test fitness value(s) and diversity measurements. Defaults to None.
         run_info (list, optional): Information about the run. Defaults to None.
         seed (int, optional): The seed used in random, numpy, and torch libraries. Defaults to 0.
+        scale_nodes_with_log10 (bool, optional): If True, a log10 is applied to each number of nodes to avoid getting large numbers and possibly overflow (default is False).
 
     Returns:
         None
@@ -75,19 +78,16 @@ def logger(
     with open(path, "a", newline="") as file:
         writer = csv.writer(file)
         infos = copy(run_info) if run_info is not None else []
-        infos.extend([seed, generation, float(pop_val_fitness), timing, nodes])
+        nodes_ = round(math.log10(nodes), 6) if scale_nodes_with_log10 else nodes
+        infos.extend([seed, generation, float(pop_val_fitness), timing, nodes_])
 
         if additional_infos is not None:
-            try:
-                additional_infos[0] = float(additional_infos[0])
-            except:
-                additional_infos[0] = "None"
             infos.extend(additional_infos)
 
         writer.writerow(infos)
 
 
-def drop_experiment_from_logger(experiment_id: str or int, log_path: str) -> None:
+def drop_experiment_from_logger(experiment_id: str | int, log_path: str) -> None:
     """
     Remove an experiment from the logger CSV file. If the given experiment_id is -1, the last saved experiment is removed.
 

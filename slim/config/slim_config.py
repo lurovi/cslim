@@ -30,7 +30,7 @@ settings_dict = {"p_test": 0.2}
 
 # SLIM GSGP solve parameters
 slim_gsgp_solve_parameters = {
-    "log": 1,
+    "log": 5,
     "verbose": 1,
     "run_info": None,
     "ffunction": rmse,
@@ -41,6 +41,7 @@ slim_gsgp_solve_parameters = {
 # SLIM GSGP parameters
 slim_gsgp_parameters = {
     "initializer": rhh,
+    "pressure": 2,
     "selector": tournament_selection_min_slim(2),
     "crossover": geometric_crossover,
     "ms": None,
@@ -51,7 +52,10 @@ slim_gsgp_parameters = {
     "find_elit_func": get_best_min,
     "p_inflate": None,
     "copy_parent": None,
-    "operator": None
+    "operator": None,
+    "torus_dim": 0,
+    "radius": 0,
+    "cmp_rate": 0.0
 }
 slim_gsgp_parameters["p_m"] = 1 - slim_gsgp_parameters["p_xo"]
 
@@ -69,13 +73,21 @@ def update_slim_config(
         reconstruct: bool = True,
         pressure: int = 2,
         p_xo: float = 0,
-        p_c: float = 0
+        p_c: float = 0,
+        torus_dim: int = 0,
+        radius: int = 0,
+        cmp_rate: float = 0.0
 ) -> None:
     settings_dict['p_test'] = p_test
     slim_gsgp_solve_parameters['log'] = log
     slim_gsgp_solve_parameters['verbose'] = verbose
     slim_gsgp_solve_parameters['reconstruct'] = reconstruct
+    slim_gsgp_parameters['pressure'] = pressure
     slim_gsgp_parameters['selector'] = tournament_selection_min_slim(pressure)
     slim_gsgp_parameters['p_xo'] = p_xo
     slim_gsgp_parameters['p_m'] = 1 - slim_gsgp_parameters['p_xo']
     slim_gsgp_pi_init['p_c'] = p_c
+
+    slim_gsgp_parameters['torus_dim'] = torus_dim
+    slim_gsgp_parameters['radius'] = radius
+    slim_gsgp_parameters['cmp_rate'] = cmp_rate

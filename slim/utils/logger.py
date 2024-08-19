@@ -7,6 +7,32 @@ from uuid import UUID
 import pandas as pd
 
 
+def compute_path_run_log_and_settings(
+        base_path: str,
+        method: str,
+        dataset_name: str,
+        pop_size: int,
+        n_iter: int,
+        n_elites: int,
+        pressure: int,
+        torus_dim: int,
+        radius: int,
+        cmp_rate: float,
+        pop_shape: tuple[int, ...]
+) -> str:
+    s: str = base_path.strip()
+
+    s = os.path.join(
+        s,
+        f'{method.lower().strip()}_{dataset_name.lower().strip()}',
+        f'pop{pop_size}gen{n_iter}elites{n_elites}shape{"x".join([str(n) for n in pop_shape])}',
+        f'pressure{pressure}torus{torus_dim}radius{radius}cmprate{str(round(cmp_rate, 3)).replace(".", "d")}',
+        ''
+    )
+
+    return s
+
+
 def log_settings(path: str, settings_dict: list, unique_run_id: UUID) -> None:
     """
     Log the settings to a CSV file.
@@ -19,6 +45,8 @@ def log_settings(path: str, settings_dict: list, unique_run_id: UUID) -> None:
     Returns:
         None
     """
+    if not os.path.isdir('/'.join(path.split('/')[:-1])):
+        os.makedirs('/'.join(path.split('/')[:-1]))
     settings_dict = merge_settings(*settings_dict)
     del settings_dict["TERMINALS"]
 
@@ -60,7 +88,7 @@ def logger(
     Logs information into a CSV file.
 
     Args:
-        path (str): Path to the CSV file.
+        path (str): Path containing the log.
         generation (int): Current generation number.
         pop_val_fitness (float): Population's validation fitness value.
         timing (float): Time taken for the process.
@@ -73,9 +101,9 @@ def logger(
     Returns:
         None
     """
-    if not os.path.isdir(os.path.dirname(path)):
-        os.mkdir(os.path.dirname(path))
-    with open(path, "a", newline="") as file:
+    if not os.path.isdir(path):
+        os.makedirs(path)
+    with open(os.path.join(path, f"seed{seed}_run.csv"), "a", newline="") as file:
         writer = csv.writer(file)
         infos = copy(run_info) if run_info is not None else []
         nodes_ = round(math.log10(nodes), 6) if scale_nodes_with_log10 else nodes

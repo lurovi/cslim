@@ -6,7 +6,7 @@ import uuid
 
 from slim.algorithms.GSGP.gsgp import GSGP
 from slim.config.gsgp_config import *
-from slim.utils.logger import log_settings
+from slim.utils.logger import log_settings, compute_path_run_log_and_settings
 from slim.utils.utils import get_terminals, validate_inputs
 from typing import Callable
 
@@ -16,7 +16,7 @@ def gsgp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
          dataset_name: str = None, pop_size: int = 100, n_iter: int = 100, p_xo: float = 0.0, elitism: bool = True,
          n_elites: int = 1, init_depth: int = 8, ms: Callable = generate_random_uniform(0, 1),
          pressure: int = 2, torus_dim: int = 0, radius: int = 0, cmp_rate: float = 0.0, pop_shape: tuple[int, ...] = tuple(),
-         log_path: str = os.path.join(os.getcwd(), "log", "gsgp.csv"), seed: int = 1):
+         log_path: str = '', seed: int = 1):
     """
     Main function to execute the Standard GSGP algorithm on specified datasets
 
@@ -91,6 +91,23 @@ def gsgp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
 
     update_gsgp_config(pressure=pressure, torus_dim=torus_dim, radius=radius, cmp_rate=cmp_rate)
 
+    if log_path.strip() == '':
+        raise ValueError(f'Please, specify a directory in which you can save the log of the run.')
+
+    log_path = compute_path_run_log_and_settings(
+        base_path=log_path,
+        method='gsgp',
+        dataset_name=dataset_name,
+        pop_size=pop_size,
+        n_iter=n_iter,
+        n_elites=n_elites,
+        pressure=pressure,
+        torus_dim=torus_dim,
+        radius=radius,
+        cmp_rate=cmp_rate,
+        pop_shape=pop_shape
+    )
+
     algo_name = "StandardGSGP"
     gsgp_solve_parameters["run_info"] = [algo_name, unique_run_id, dataset_name]
 
@@ -127,7 +144,7 @@ def gsgp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
     )
 
     log_settings(
-        path=log_path[:-4] + "_settings.csv",
+        path=os.path.join(log_path, f"seed{seed}_settings.csv"),
         settings_dict=[gsgp_solve_parameters,
                        gsgp_parameters,
                        gsgp_pi_init,
@@ -148,7 +165,8 @@ if __name__ == "__main__":
 
     final_tree = gsgp(X_train=X_train, y_train=y_train,
                       X_test=X_val, y_test=y_val,
-                      dataset_name='ppb', pop_size=100, n_iter=10, pressure=4)
+                      dataset_name='ppb', pop_size=100, n_iter=10, pressure=4,
+                      log_path='log')
 
     predictions = final_tree.predict(X_test)
     print(float(rmse(y_true=y_test, y_pred=predictions)))

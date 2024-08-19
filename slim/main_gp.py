@@ -9,7 +9,7 @@ from slim.algorithms.GP.gp import GP
 from slim.algorithms.GP.operators.mutators import mutate_tree_subtree
 from slim.algorithms.GP.representations.tree_utils import tree_depth, tree_pruning
 from slim.config.gp_config import *
-from slim.utils.logger import log_settings
+from slim.utils.logger import log_settings, compute_path_run_log_and_settings
 from slim.utils.utils import get_terminals, validate_inputs
 
 
@@ -18,7 +18,7 @@ def gp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = None
        dataset_name: str = None, pop_size: int = 100, n_iter: int = 1000, p_xo: float = 0.8,
        elitism: bool = True, n_elites: int = 1, max_depth: int = 17, init_depth: int = 6,
        pressure: int = 2, torus_dim: int = 0, radius: int = 0, cmp_rate: float = 0.0, pop_shape: tuple[int, ...] = tuple(),
-       log_path: str = os.path.join(os.getcwd(), "log", "gp.csv"), seed: int = 42):
+       log_path: str = '', seed: int = 42):
     """
     Main function to execute the StandardGP algorithm on specified datasets
 
@@ -93,6 +93,23 @@ def gp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = None
 
     update_gp_config(pressure=pressure, torus_dim=torus_dim, radius=radius, cmp_rate=cmp_rate)
 
+    if log_path.strip() == '':
+        raise ValueError(f'Please, specify a directory in which you can save the log of the run.')
+
+    log_path = compute_path_run_log_and_settings(
+        base_path=log_path,
+        method='gp',
+        dataset_name=dataset_name,
+        pop_size=pop_size,
+        n_iter=n_iter,
+        n_elites=n_elites,
+        pressure=pressure,
+        torus_dim=torus_dim,
+        radius=radius,
+        cmp_rate=cmp_rate,
+        pop_shape=pop_shape
+    )
+
     algo = "StandardGP"
     gp_solve_parameters['run_info'] = [algo, unique_run_id, dataset_name]
 
@@ -134,7 +151,7 @@ def gp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = None
     )
 
     log_settings(
-        path=log_path[:-4] + "_settings.csv",
+        path=os.path.join(log_path, f"seed{seed}_settings.csv"),
         settings_dict=[gp_solve_parameters,
                        gp_parameters,
                        gp_pi_init,
@@ -156,7 +173,8 @@ if __name__ == "__main__":
 
     final_tree = gp(X_train=X_train, y_train=y_train,
                     X_test=X_val, y_test=y_val,
-                    dataset_name='ppb', pop_size=100, n_iter=10, pressure=4)
+                    dataset_name='ppb', pop_size=100, n_iter=10, pressure=4,
+                    log_path='log')
 
     final_tree.print_tree_representation()
     predictions = final_tree.predict(X_test)

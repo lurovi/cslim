@@ -3,7 +3,7 @@ from slim.algorithms.GSGP.operators.crossover_operators import geometric_crossov
 from slim.algorithms.SLIM_GSGP.operators.mutators import (deflate_mutation)
 from slim.algorithms.SLIM_GSGP.operators.selection_algorithms import \
     tournament_selection_min_slim
-from datasets.data_loader import *
+from slim.datasets.data_loader import *
 from slim.evaluators.fitness_functions import rmse
 from slim.utils.utils import (get_best_min, protected_div)
 
@@ -68,7 +68,7 @@ slim_gsgp_pi_init = {
 
 def update_slim_config(
         p_test: float = 0.2,
-        log: int = 1,
+        log: int = 5,
         verbose: int = 1,
         reconstruct: bool = True,
         pressure: int = 2,

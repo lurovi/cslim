@@ -116,6 +116,6 @@ def gsgp_pop_div_from_vectors(sem_vectors):
         float: The average pairwise distance between semantic vectors.
     """
     # https://ieeexplore.ieee.org/document/9283096
-    return float(torch.sum(torch.cdist(sem_vectors, sem_vectors)) / (
+    return float(torch.sum(torch.cdist(sem_vectors, sem_vectors)).item()) / (
         sem_vectors.shape[0] ** 2
-    ).item())
+    )

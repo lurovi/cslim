@@ -136,9 +136,9 @@ class GSGP:
         if test_elite and (X_test is None or y_test is None):
             raise Exception('If test_elite is True you need to provide a test dataset')
 
-        torch.manual_seed(self.seed)
-        np.random.seed(self.seed)
-        random.seed(self.seed)
+        torch.manual_seed(31 * self.seed ** 2 + 2056)
+        np.random.seed(31 * self.seed ** 2 + 2056)
+        random.seed(31 * self.seed ** 2 + 2056)
 
         all_possible_coordinates, all_neighborhoods_indices = compute_all_possible_neighborhoods(pop_size=self.pop_size, pop_shape=self.pop_shape, is_cellular_selection=self.is_cellular_selection, neighbors_topology_factory=self.neighbors_topology_factory)
         weights_matrix_moran = weights_matrix_for_morans_I(pop_size=self.pop_size, is_cellular_selection=self.is_cellular_selection, all_possible_coordinates=all_possible_coordinates, all_neighborhoods_indices=all_neighborhoods_indices)

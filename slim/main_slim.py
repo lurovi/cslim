@@ -7,7 +7,7 @@ import uuid
 
 from slim.algorithms.SLIM_GSGP.slim_gsgp import SLIM_GSGP
 from slim.config.slim_config import *
-from slim.utils.logger import log_settings
+from slim.utils.logger import log_settings, compute_path_run_log_and_settings
 from slim.utils.utils import get_terminals, check_slim_version, validate_inputs, generate_random_uniform
 from slim.algorithms.SLIM_GSGP.operators.mutators import inflate_mutation
 from typing import Callable
@@ -23,7 +23,7 @@ def slim(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
          n_iter: int = 100, elitism: bool = True, n_elites: int = 1, init_depth: int = 6,
          ms: Callable = generate_random_uniform(0, 1), p_inflate: float = 0.5,
          pressure: int = 2, torus_dim: int = 0, radius: int = 0, cmp_rate: float = 0.0, pop_shape: tuple[int, ...] = tuple(),
-         log_path: str = os.path.join(os.getcwd(), "log", "slim.csv"), seed: int = 1):
+         log_path: str = '', seed: int = 1):
     """
     Main function to execute the SLIM GSGP algorithm on specified datasets
 
@@ -94,6 +94,23 @@ def slim(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
 
     update_slim_config(pressure=pressure, torus_dim=torus_dim, radius=radius, cmp_rate=cmp_rate)
 
+    if log_path.strip() == '':
+        raise ValueError(f'Please, specify a directory in which you can save the log of the run.')
+
+    log_path = compute_path_run_log_and_settings(
+        base_path=log_path,
+        method='gsgp' + '' + slim_version,
+        dataset_name=dataset_name,
+        pop_size=pop_size,
+        n_iter=n_iter,
+        n_elites=n_elites,
+        pressure=pressure,
+        torus_dim=torus_dim,
+        radius=radius,
+        cmp_rate=cmp_rate,
+        pop_shape=pop_shape
+    )
+
     slim_gsgp_parameters["two_trees"] = trees
     slim_gsgp_parameters["operator"] = op
 
@@ -145,7 +162,7 @@ def slim(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
     )
 
     log_settings(
-        path=os.path.join(os.getcwd(), "log", "slim_settings.csv"),
+        path=os.path.join(log_path, f"seed{seed}_settings.csv"),
         settings_dict=[slim_gsgp_solve_parameters,
                        slim_gsgp_parameters,
                        slim_gsgp_pi_init,
@@ -168,7 +185,8 @@ if __name__ == "__main__":
     algorithm = "SLIM+SIG2"
 
     final_tree = slim(X_train=X_train, y_train=y_train, X_test=X_val, y_test=y_val,
-                      dataset_name='ppb', slim_version=algorithm, pop_size=100, n_iter=2, pressure=4)
+                      dataset_name='ppb', slim_version=algorithm, pop_size=100, n_iter=2, pressure=4,
+                      log_path='log')
 
     print(show_individual(final_tree, operator='sum'))
     predictions = final_tree.predict(data=X_test, slim_version=algorithm)

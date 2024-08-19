@@ -153,9 +153,9 @@ class SLIM_GSGP:
         if test_elite and (X_test is None or y_test is None):
             raise Exception('If test_elite is True you need to provide a test dataset')
 
-        torch.manual_seed(self.seed)
-        np.random.seed(self.seed)
-        random.seed(self.seed)
+        torch.manual_seed(31 * self.seed ** 2 + 2056)
+        np.random.seed(31 * self.seed ** 2 + 2056)
+        random.seed(31 * self.seed ** 2 + 2056)
 
         all_possible_coordinates, all_neighborhoods_indices = compute_all_possible_neighborhoods(pop_size=self.pop_size, pop_shape=self.pop_shape, is_cellular_selection=self.is_cellular_selection, neighbors_topology_factory=self.neighbors_topology_factory)
         weights_matrix_moran = weights_matrix_for_morans_I(pop_size=self.pop_size, is_cellular_selection=self.is_cellular_selection, all_possible_coordinates=all_possible_coordinates, all_neighborhoods_indices=all_neighborhoods_indices)
@@ -319,16 +319,16 @@ class SLIM_GSGP:
                 )
 
                 add_info = [
-                    '' if round(math.log10(int(self.elite.nodes)), 6) > 1.3 else show_individual(self.elite, operator=self.operator),
+                    '' if round(math.log10(int(self.elite.nodes_count)), 6) > 2 else show_individual(self.elite, operator=self.operator),
                     float(self.elite.fitness),
                     float(self.elite.test_fitness),
-                    round(math.log10(int(self.elite.nodes)), 6),
+                    round(math.log10(int(self.elite.nodes_count)), 6),
                     gen_diversity_1,
                     gen_diversity_2,
                     gen_diversity_3,
                     np.mean(population.fit),
                     np.std(population.fit),
-                    " ".join([str(round(math.log10(ind.nodes), 6)) for ind in population.population]),
+                    " ".join([str(round(math.log10(ind.nodes_count), 6)) for ind in population.population]),
                     " ".join([str(f) for f in population.fit]),
                     log,
                 ]
@@ -630,16 +630,16 @@ class SLIM_GSGP:
                     )
 
                     add_info = [
-                        '' if round(math.log10(int(self.elite.nodes)), 6) > 1.3 else show_individual(self.elite, operator=self.operator),
+                        '' if round(math.log10(int(self.elite.nodes_count)), 6) > 2 else show_individual(self.elite, operator=self.operator),
                         float(self.elite.fitness),
                         float(self.elite.test_fitness),
-                        round(math.log10(int(self.elite.nodes)), 6),
+                        round(math.log10(int(self.elite.nodes_count)), 6),
                         gen_diversity_1,
                         gen_diversity_2,
                         gen_diversity_3,
                         np.mean(population.fit),
                         np.std(population.fit),
-                        " ".join([str(round(math.log10(ind.nodes), 6)) for ind in population.population]),
+                        " ".join([str(round(math.log10(ind.nodes_count), 6)) for ind in population.population]),
                         " ".join([str(f) for f in population.fit]),
                         log,
                     ]

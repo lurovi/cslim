@@ -69,7 +69,7 @@ def process_pool_parallelize(target_method: Callable, parameters: list[dict[str,
     return res
 
 
-def multiprocessing_parallelize(target_method: Callable, parameters: list[dict[str, Any]], num_workers: int = 0, chunksize: int = 1, timeout: Optional[float] = None) -> list[T]:
+def multiprocessing_parallelize(target_method: Callable, parameters: list[dict[str, Any]], num_workers: int = 0, chunksize: int = 1) -> list[T]:
     """
     Multiprocessing with the specification of the number of workers (default 0, meaning no parallelization).
     The parameter num_workers in this case is an int that must be in the range [-2, cpu_count]:
@@ -90,14 +90,14 @@ def multiprocessing_parallelize(target_method: Callable, parameters: list[dict[s
     number_of_processes: int = {-2: (os.cpu_count()), -1: (os.cpu_count() - 1)}.get(num_workers, num_workers)
         
     with mp.Pool(processes=number_of_processes, maxtasksperchild=1) as pool:
-        map_function: Callable = partial(pool.map, chunksize=chunksize, timeout=timeout)
+        map_function: Callable = partial(pool.map, chunksize=chunksize)
         exec_function: Callable = partial(target_method_wrapper, target_method=target_method)
         res: list[T] = list(map_function(exec_function, parameters))
 
     return res
 
 
-def torch_multiprocessing_parallelize(target_method: Callable, parameters: list[dict[str, Any]], num_workers: int = 0, chunksize: int = 1, timeout: Optional[float] = None) -> list[T]:
+def torch_multiprocessing_parallelize(target_method: Callable, parameters: list[dict[str, Any]], num_workers: int = 0, chunksize: int = 1) -> list[T]:
     """
     Multiprocessing with the specification of the number of workers (default 0, meaning no parallelization).
     The parameter num_workers in this case is an int that must be in the range [-2, cpu_count]:
@@ -118,7 +118,7 @@ def torch_multiprocessing_parallelize(target_method: Callable, parameters: list[
     number_of_processes: int = {-2: (os.cpu_count()), -1: (os.cpu_count() - 1)}.get(num_workers, num_workers)
         
     with torchmp.Pool(processes=number_of_processes, maxtasksperchild=1) as pool:
-        map_function: Callable = partial(pool.map, chunksize=chunksize, timeout=timeout)
+        map_function: Callable = partial(pool.map, chunksize=chunksize)
         exec_function: Callable = partial(target_method_wrapper, target_method=target_method)
         res: list[T] = list(map_function(exec_function, parameters))
 

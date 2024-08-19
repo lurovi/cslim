@@ -4,13 +4,19 @@
 
 ## Installation
 
-To install the library, use the following command:
+To install the library, locally clone this repo and use the following command while being in the folder containing setup.py (ensure you have activated a python environment with at least python 3.10):
 ```sh
-pip install gsgp_slim
+pip3 install -U .
 ```
 Additionally, make sure to install all required dependencies:
 ```sh
-pip install -r requirements.txt
+pip3 install -r requirements.txt
+```
+You can also create the environment directly from conda:
+```sh
+conda env create -f environment.yml
+conda activate slim_env
+pip3 install -U .
 ```
 
 ## Usage

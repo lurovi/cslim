@@ -109,12 +109,7 @@ def simple_selection_process(
         first_tournament: list = neighbors_topology.neighborhood(coordinate, include_current_point=True, clone=False, distinct_coordinates=False)
         first_tournament.sort(key=lambda x: x[1].fitness, reverse=False)
         second_tournament: list = neighbors_topology.neighborhood(coordinate, include_current_point=True, clone=False, distinct_coordinates=False)
-        second_tournament.sort(key=lambda x: x[1].fitness, reverse=False)
-        while first_tournament[0][0] == second_tournament[0][0]:
-            first_tournament: list = neighbors_topology.neighborhood(coordinate, include_current_point=True, clone=False, distinct_coordinates=False)
-            first_tournament.sort(key=lambda x: x[1].fitness, reverse=False)
-            second_tournament: list = neighbors_topology.neighborhood(coordinate, include_current_point=True, clone=False, distinct_coordinates=False)
-            second_tournament.sort(key=lambda x: x[1].fitness, reverse=False)    
+        second_tournament.sort(key=lambda x: x[1].fitness, reverse=False) 
         first = first_tournament[0][1]
         second = second_tournament[0][1]
 

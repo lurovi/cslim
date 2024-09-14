@@ -54,12 +54,12 @@ if __name__ == '__main__':
 
     path: str = '../slim-DATA/results/'
 
-    dataset_names: list[str] = ['vladislavleva4', 'keijzer6', 'nguyen7', 'pagie1', 'airfoil', 'concrete', 'slump', 'parkinson', 'yacht', 'qsaraquatic']
+    dataset_names: list[str] = ['vladislavleva4', 'keijzer6', 'nguyen7', 'pagie1', 'airfoil', 'concrete', 'slump', 'parkinson', 'yacht']
     slim_versions: list[str] = ['SLIM+SIG2', 'SLIM+ABS', 'SLIM+SIG1']
-    n_reps: int = 10
+    n_reps: int = 30
 
     pop_size: int = 100
-    n_iter: int = 200
+    n_iter: int = 300
     n_elites: int = 1
     pressure: int = 4
 

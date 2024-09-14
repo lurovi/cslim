@@ -34,6 +34,8 @@ class SLIM_GSGP:
         p_xo=0,
         p_inflate=0.3,
         p_deflate=0.7,
+        p_inflate_post=0.3,
+        p_deflate_post=0.7,
         pop_size=100,
         pop_shape=(100,),
         torus_dim=0,
@@ -62,6 +64,8 @@ class SLIM_GSGP:
             p_xo: Probability of crossover.
             p_inflate: Probability of inflate mutation.
             p_deflate: Probability of deflate mutation.
+            p_inflate_post: Probability of inflate mutation after post generation.
+            p_deflate_post: Probability of deflate mutation after post generation.
             pop_size: Population size.
             pop_shape (tuple): Shape of the grid containing the population in cellular selection (makes no sense if no cellular selection is performed).
             torus_dim (int): Dimension of the torus in cellular selection (0 if no cellular selection is performed).
@@ -80,6 +84,8 @@ class SLIM_GSGP:
         self.p_m = p_m
         self.p_inflate = p_inflate
         self.p_deflate = p_deflate
+        self.p_inflate_post = p_inflate_post
+        self.p_deflate_post = p_deflate_post
         self.crossover = crossover
         self.inflate_mutator = inflate_mutator
         self.deflate_mutator = deflate_mutator
@@ -118,6 +124,7 @@ class SLIM_GSGP:
         curr_dataset,
         run_info,
         n_iter=20,
+        iter_post=0,
         elitism=True,
         log=0,
         verbose=0,
@@ -139,6 +146,7 @@ class SLIM_GSGP:
             curr_dataset: Current dataset identifier.
             run_info: Information about the current run.
             n_iter: Number of iterations.
+            iter_post: Post generation after which the inflate and deflate probabilities change.
             elitism: Boolean indicating if elitism is used.
             log: Logging level.
             verbose: Verbosity level.
@@ -359,6 +367,10 @@ class SLIM_GSGP:
             )
 
         for it in range(1, n_iter + 1, 1):
+            if iter_post != 0 and it == iter_post:
+                self.p_inflate = self.p_inflate_post
+                self.p_deflate = self.p_deflate_post
+
             offs_pop, start = [], time.time()
             if elitism:
                 offs_pop.extend(self.elites)

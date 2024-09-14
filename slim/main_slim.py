@@ -21,7 +21,7 @@ UNIQUE_RUN_ID = uuid.uuid1()
 def slim(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = None, y_test: torch.Tensor = None,
          dataset_name: str = None, slim_version: str = "SLIM+SIG2", pop_size: int = 100,
          n_iter: int = 100, elitism: bool = True, n_elites: int = 1, init_depth: int = 6,
-         ms: Callable = generate_random_uniform(0, 1), p_inflate: float = 0.5,
+         ms: Callable = generate_random_uniform(0, 1), p_inflate: float = 0.5, p_inflate_post: float = 0.5, iter_post: int = 0,
          pressure: int = 2, torus_dim: int = 0, radius: int = 0, cmp_rate: float = 0.0, pop_shape: tuple[int, ...] = tuple(),
          log_path: str = '', seed: int = 1):
     """
@@ -55,6 +55,10 @@ def slim(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
         A function that will generate the mutation step
     p_inflate : float, optional
         Probability to apply the inflate mutation
+    p_inflate_post : float, optional
+        Probability to apply the inflate mutation after the generation indicated as iter_post
+    iter_post : int, optional
+        Generation after which the probability of inflate mutation changes from p_inflate to p_inflate_post (the deflate mutation probability is also changed accordingly)
     log_path : str, optional
         The path where is created the log directory where results are saved.
     pressure : int, optional
@@ -86,6 +90,12 @@ def slim(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
         pop_shape = (pop_size,)
     else:
         pressure = 0
+
+    if iter_post == 0:
+        p_inflate_post = p_inflate
+    
+    if p_inflate == p_inflate_post:
+        iter_post = 0
 
     validate_inputs(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test,
                     pop_size=pop_size, n_iter=n_iter, elitism=elitism, n_elites=n_elites,
@@ -119,6 +129,8 @@ def slim(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
     slim_gsgp_parameters["ms"] = ms
     slim_gsgp_parameters['p_inflate'] = p_inflate
     slim_gsgp_parameters['p_deflate'] = 1 - slim_gsgp_parameters['p_inflate']
+    slim_gsgp_parameters['p_inflate_post'] = p_inflate_post
+    slim_gsgp_parameters['p_deflate_post'] = 1 - slim_gsgp_parameters['p_inflate_post'] 
 
     slim_gsgp_pi_init["TERMINALS"] = TERMINALS
     slim_gsgp_pi_init["init_pop_size"] = pop_size
@@ -140,6 +152,7 @@ def slim(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
     slim_gsgp_solve_parameters["elitism"] = elitism
     slim_gsgp_solve_parameters["n_elites"] = n_elites
     slim_gsgp_solve_parameters["n_iter"] = n_iter
+    slim_gsgp_solve_parameters["iter_post"] = iter_post
     slim_gsgp_solve_parameters['run_info'] = [slim_version, UNIQUE_RUN_ID, dataset_name]
     if X_test is not None and y_test is not None:
         slim_gsgp_solve_parameters["test_elite"] = True

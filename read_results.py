@@ -4,8 +4,8 @@ import statistics
 import pandas as pd
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
-from slim.utils.logger import compute_path_run_log_and_settings
-from slim.utils.stats import perform_mannwhitneyu_holm_bonferroni, is_mannwhitneyu_passed, is_kruskalwallis_passed
+from cslim.utils.logger import compute_path_run_log_and_settings
+from cslim.utils.stats import perform_mannwhitneyu_holm_bonferroni, is_mannwhitneyu_passed, is_kruskalwallis_passed
 
 
 def load_value_from_run_csv(
@@ -50,22 +50,20 @@ def load_value_from_run_csv(
 
 
 if __name__ == '__main__':
-    
+    path: str = '../cslim-DATA/results/'
 
-    path: str = '../slim-DATA/results/'
-
-    dataset_names: list[str] = ['vladislavleva4', 'keijzer6', 'nguyen7', 'pagie1', 'airfoil', 'concrete', 'slump', 'parkinson', 'yacht']
-    slim_versions: list[str] = ['SLIM+SIG2', 'SLIM+ABS', 'SLIM+SIG1']
+    dataset_names: list[str] = ['airfoil', 'concrete', 'slump', 'parkinson', 'yacht', 'qsaraquatic', 'toxicity']
+    slim_versions: list[str] = ['SLIM*ABS', 'SLIM*SIG1']
     n_reps: int = 30
 
     pop_size: int = 100
-    n_iter: int = 300
+    n_iter: int = 1000
     n_elites: int = 1
     pressure: int = 4
 
     torus_dim: int = 2
     pop_shape: tuple[int, ...] = (int(pop_size ** 0.5), int(pop_size ** 0.5))
-    all_radius: list[int] = [2, 3]
+    all_radius: list[int] = [1, 2, 3]
     all_cmp_rate: list[float] = [0.6, 1.0]
     
     results = {slim_version.lower(): {dataset_name.lower(): {} for dataset_name in dataset_names} for slim_version in slim_versions}

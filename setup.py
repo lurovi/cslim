@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='gsgp_slim',
-    version='0.1.1',
+    name='gsgp_cslim',
+    version='1.0.0',
     packages=find_packages(),
     install_requires=[
         'numpy',
@@ -20,7 +20,7 @@ setup(
     description='Semantic Learning algorithm based on Inflate and deflate Mutation (SLIM GSGP)',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
-    url='https://github.com/DALabNOVA/slim',
+    url='https://github.com/lurovi/cslim',
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',

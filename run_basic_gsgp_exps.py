@@ -1,6 +1,6 @@
 from cslim.datasets.data_loader import read_csv_data
 from cslim.utils.parallel import torch_multiprocessing_parallelize
-from cslim.main_slim import slim
+from cslim.main_gsgp import gsgp
 import os
 import time
 import datetime
@@ -11,7 +11,6 @@ import torch
 def execute(
         path: str,
         dataset_name: str,
-        slim_version: str,
         seed: int,
         pop_size: int,
         n_iter: int,
@@ -20,10 +19,7 @@ def execute(
         torus_dim: int,
         radius: int,
         cmp_rate: float,
-        pop_shape: tuple[int, ...],
-        p_inflate: float,
-        p_inflate_post: float,
-        iter_post: int
+        pop_shape: tuple[int, ...]
     ) -> None:
 
     d = read_csv_data('cslim/datasets/data_csv/', dataset_name, seed) # DATA SPLIT INDEXES START FROM 1
@@ -36,20 +32,16 @@ def execute(
         # THE ACTUAL SEED TO BE USED IS LOCATED AT POSITION SEED - 1 SINCE SEED IS AN INDEX THAT STARTS FROM 1
         all_actual_seeds: list[int] = [int(curr_actual_seed_as_str) for curr_actual_seed_as_str in f.readlines()]
     
-    slim(X_train=X_train,
+    gsgp(X_train=X_train,
          y_train=y_train,
          X_test=X_test,
          y_test=y_test,
          dataset_name=dataset_name,
-         slim_version=slim_version,
          pop_size=pop_size,
          n_iter=n_iter,
          elitism=True,
          n_elites=n_elites,
          init_depth=6,
-         p_inflate=p_inflate,
-         p_inflate_post=p_inflate_post,
-         iter_post=iter_post,
          pressure=pressure,
          torus_dim=torus_dim,
          radius=radius,
@@ -59,7 +51,7 @@ def execute(
          seed=all_actual_seeds[seed - 1]
     )
 
-    verbose_output: str = f'SEED{seed} SlimVersion {slim_version} PopSize {pop_size} NIter {n_iter} NElites {n_elites} Pressure {pressure} Dataset {dataset_name} TorusDim {torus_dim} Radius {radius} CmpRate {cmp_rate} PopShape {str(pop_shape)} PInflate {round(p_inflate, 2)} PInflatePost {round(p_inflate_post, 2)} IterPost {round(iter_post, 2)}'
+    verbose_output: str = f'SEED{seed} PopSize {pop_size} NIter {n_iter} NElites {n_elites} Pressure {pressure} Dataset {dataset_name} TorusDim {torus_dim} Radius {radius} CmpRate {cmp_rate} PopShape {str(pop_shape)}'
     print(verbose_output)
     with open(os.path.join(path, 'terminal_std_out.txt'), 'a+') as terminal_std_out:
         terminal_std_out.write(verbose_output)
@@ -82,7 +74,6 @@ if __name__ == '__main__':
     p_inflate_as_str: str = str(p_inflate).replace(".", "d")
     path: str = f'results_p_inflate_{p_inflate_as_str}/'
 
-
     if not os.path.isdir(path):
         os.makedirs(path)
 
@@ -96,9 +87,6 @@ if __name__ == '__main__':
     n_iter: int = 300
     n_elites: int = 1
     pressure: int = 4
-
-    p_inflate_post: float = 0.3
-    iter_post: int = 0
 
     # ==============================
     # CELLULAR PARAMETERS
@@ -114,7 +102,6 @@ if __name__ == '__main__':
     # ==============================
 
     dataset_names: list[str] = ['airfoil', 'concrete', 'slump', 'parkinson', 'yacht']
-    slim_versions: list[str] = ['SLIM*ABS', 'SLIM*SIG1', 'SLIM+ABS', 'SLIM+SIG1']
     
     # ==============================
     # POPULATING PARAMETERS SETS
@@ -126,16 +113,12 @@ if __name__ == '__main__':
 
     # parameters.append({'path': path,
     #                    'dataset_name': 'parkinson',
-    #                    'slim_version': 'SLIM*ABS',
     #                    'seed': 1,
     #                    'pop_size': pop_size,
     #                    'n_iter': n_iter,
     #                    'n_elites': n_elites,
     #                    'pop_shape': pop_shape,
     #                    'pressure': pressure,
-    #                    'p_inflate': p_inflate,
-    #                    'p_inflate_post': p_inflate_post,
-    #                    'iter_post': iter_post,
     #                    'torus_dim': 2,
     #                    'radius': 3,
     #                    'cmp_rate': 1.0
@@ -145,41 +128,32 @@ if __name__ == '__main__':
 
     for dataset_name in dataset_names:
         for seed in range(1, n_reps + 1): # SEED INDEX MUST START FROM 1
-            for slim_version in slim_versions:
-                parameters.append({'path': path,
-                                   'dataset_name': dataset_name,
-                                   'slim_version': slim_version,
-                                   'seed': seed,
-                                   'pop_size': pop_size,
-                                   'n_iter': n_iter,
-                                   'n_elites': n_elites,
-                                   'pop_shape': (pop_size,),
-                                   'pressure': pressure,
-                                   'p_inflate': p_inflate,
-                                   'p_inflate_post': p_inflate_post,
-                                   'iter_post': iter_post,
-                                   'torus_dim': 0,
-                                   'radius': 0,
-                                   'cmp_rate': 0.0
-                                   })
-                for radius in all_radius:
-                    for cmp_rate in all_cmp_rates:
-                        parameters.append({'path': path,
-                                           'dataset_name': dataset_name,
-                                           'slim_version': slim_version,
-                                           'seed': seed,
-                                           'pop_size': pop_size,
-                                           'n_iter': n_iter,
-                                           'n_elites': n_elites,
-                                           'pop_shape': pop_shape,
-                                           'pressure': 0,
-                                           'p_inflate': p_inflate,
-                                           'p_inflate_post': p_inflate_post,
-                                           'iter_post': iter_post,
-                                           'torus_dim': torus_dim,
-                                           'radius': radius,
-                                           'cmp_rate': cmp_rate
-                                        })
+            parameters.append({'path': path,
+                                'dataset_name': dataset_name,
+                                'seed': seed,
+                                'pop_size': pop_size,
+                                'n_iter': n_iter,
+                                'n_elites': n_elites,
+                                'pop_shape': (pop_size,),
+                                'pressure': pressure,
+                                'torus_dim': 0,
+                                'radius': 0,
+                                'cmp_rate': 0.0
+                                })
+            for radius in all_radius:
+                for cmp_rate in all_cmp_rates:
+                    parameters.append({'path': path,
+                                        'dataset_name': dataset_name,
+                                        'seed': seed,
+                                        'pop_size': pop_size,
+                                        'n_iter': n_iter,
+                                        'n_elites': n_elites,
+                                        'pop_shape': pop_shape,
+                                        'pressure': 0,
+                                        'torus_dim': torus_dim,
+                                        'radius': radius,
+                                        'cmp_rate': cmp_rate
+                                    })
 
 
     with open(os.path.join(path, 'terminal_std_out.txt'), 'a+') as terminal_std_out:

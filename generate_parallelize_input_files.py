@@ -23,7 +23,7 @@ def create_input_file(output_file, param_combinations):
 
     with open(output_file, "w") as f:
         for params in param_combinations:
-            f.write(",".join(str(params[key]) for key in params.keys()) + "," + output_file + "\n")
+            f.write(",".join(str(params[key]) for key in params.keys()) + "," + output_file.replace(".txt", "") + "\n")
 
     print(f"Generated input file: {output_file}")
 

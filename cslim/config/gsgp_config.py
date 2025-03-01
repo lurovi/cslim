@@ -5,8 +5,7 @@ from cslim.algorithms.GSGP.operators.crossover_operators import geometric_crosso
 from cslim.algorithms.GSGP.operators.mutators import standard_geometric_mutation
 from cslim.datasets.data_loader import *
 from cslim.evaluators.fitness_functions import rmse
-from cslim.utils.utils import (generate_random_uniform, get_best_min,
-                              protected_div)
+from cslim.utils.utils import (get_best_min, protected_div)
 
 FUNCTIONS = {
     'add': {'function': torch.add, 'arity': 2},
@@ -53,7 +52,7 @@ gsgp_parameters = {
 gsgp_pi_init = {
     'FUNCTIONS': FUNCTIONS,
     'CONSTANTS': CONSTANTS,
-    "p_c": 0
+    "p_c": 0.0
 }
 
 
@@ -64,7 +63,7 @@ def update_gsgp_config(
         test_elite: bool = True,
         reconstruct: bool = True,
         pressure: int = 2,
-        p_c: float = 0,
+        p_c: float = 0.0,
         torus_dim: int = 0,
         radius: int = 0,
         cmp_rate: float = 0.0

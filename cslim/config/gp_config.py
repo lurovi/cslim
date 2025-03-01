@@ -56,7 +56,7 @@ gp_parameters = {
 gp_pi_init = {
     'FUNCTIONS': FUNCTIONS,
     'CONSTANTS': CONSTANTS,
-    "p_c": 0
+    "p_c": 0.0
 }
 
 
@@ -67,7 +67,7 @@ def update_gp_config(
         test_elite: bool = True,
         max_: bool = False,
         pressure: int = 2,
-        p_c: float = 0,
+        p_c: float = 0.0,
         torus_dim: int = 0,
         radius: int = 0,
         cmp_rate: float = 0.0

@@ -1,6 +1,8 @@
 import itertools
 import os
 import argparse
+import json
+
 
 def generate_param_combinations(params_dict):
     """
@@ -10,49 +12,35 @@ def generate_param_combinations(params_dict):
     values = (params_dict[key] if isinstance(params_dict[key], list) else [params_dict[key]] for key in keys)
     return [dict(zip(keys, combination)) for combination in itertools.product(*values)]
 
-def create_input_files(output_dir, base_filename, param_combinations):
+
+def create_input_file(output_file, param_combinations):
     """
-    Create .txt input files for parallelize_main.sh, containing parameter combinations.
+    Create a .txt input file for parallelize_main.sh, containing parameter combinations.
     """
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    
-    file_path = os.path.join(output_dir, f"{base_filename}.txt")
-    with open(file_path, "w") as f:
+    output_dir = os.path.dirname(output_file)
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+
+    with open(output_file, "w") as f:
         for params in param_combinations:
             f.write(",".join(str(params[key]) for key in params.keys()) + "\n")
-    
-    print(f"Generated input file: {file_path}")
+
+    print(f"Generated input file: {output_file}")
+
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate .txt files for parallelize_main.sh")
-    parser.add_argument("--output_dir", type=str, default="parallel_inputs", help="Directory to save the generated .txt files.")
-    parser.add_argument("--filename", type=str, default="input", help="Base name of the output .txt file.")
+    parser = argparse.ArgumentParser(description="Generate .txt file for parallelize_main.sh")
+    parser.add_argument("--json_path", type=str, help="Path to the JSON file containing parameters, extension included.")
+    parser.add_argument("--output_file", type=str, help="Path to the output .txt file, extension included.")
     args = parser.parse_args()
-    
-    # Define parameter values (modify as needed)
-    params = {
-        "seed_index": [1, 2, 3],
-        "algorithm": ["gp", "gsgp", "slim"],
-        "dataset": ["airfoil", "concrete"],
-        "pop_size": [100],
-        "n_iter": [1000],
-        "n_elites": [1],
-        "pressure": [4],
-        "slim_crossover": ["default"],
-        "p_inflate": [0.0],
-        "p_crossover": [0.9],
-        "p_mutation": [0.1],
-        "torus_dim": [0],
-        "pop_shape": ["10x10"],
-        "radius": [0],
-        "cmp_rate": [0.0],
-        "run_id": [args.filename]
-    }
-    
+
+    # Load parameters from JSON file
+    with open(args.json_path, "r") as f:
+        params = json.load(f)
+
     param_combinations = generate_param_combinations(params)
-    create_input_files(args.output_dir, args.filename, param_combinations)
+    create_input_file(args.output_file, param_combinations)
+
 
 if __name__ == "__main__":
     main()
-

@@ -1,3 +1,4 @@
+import math
 import traceback
 
 from cslim.datasets.data_loader import read_csv_data
@@ -54,8 +55,6 @@ def main():
                             help=f"Inflate probability.")
     arg_parser.add_argument("--p_crossover", type=float,
                             help=f"Crossover probability.")
-    arg_parser.add_argument("--p_mutation", type=float,
-                            help=f"Mutation probability.")
     arg_parser.add_argument("--torus_dim", type=int,
                             help="Dimension of the torus.")
     arg_parser.add_argument("--pop_shape", type=str,
@@ -79,14 +78,14 @@ def main():
     slim_crossover: str = cmd_args.slim_crossover
     p_inflate: float = cmd_args.p_inflate
     p_crossover: float = cmd_args.p_crossover
-    p_mutation: float = cmd_args.p_mutation
     torus_dim: int = cmd_args.torus_dim
     pop_shape: str = cmd_args.pop_shape
     radius: int = cmd_args.radius
     cmp_rate: float = cmd_args.cmp_rate
     run_id: str = cmd_args.run_id
 
-    args_string = f"{seed_index},{algorithm},{dataset},{pop_size},{n_iter},{n_elites},{pressure},{slim_crossover},{p_inflate},{p_crossover},{p_mutation},{torus_dim},{pop_shape},{radius},{cmp_rate},{run_id}"
+    args_string = f"{seed_index},{algorithm},{dataset},{pop_size},{n_iter},{n_elites},{pressure},{slim_crossover},{p_inflate},{p_crossover},{torus_dim},{pop_shape},{radius},{cmp_rate},{run_id}"
+    all_items_string = ",".join(f"{key}={value}" for key, value in vars(cmd_args).items())
 
     try:
         if seed_index < 1:
@@ -102,6 +101,7 @@ def main():
             # THE ACTUAL SEED TO BE USED IS LOCATED AT POSITION seed_index - 1 SINCE seed_index IS AN INDEX THAT STARTS FROM 1
             all_actual_seeds: list[int] = [int(curr_actual_seed_as_str) for curr_actual_seed_as_str in f.readlines()]
         seed: int = all_actual_seeds[seed_index - 1]
+
         init_depth: int = 6
         elitism: bool = True
 
@@ -112,10 +112,17 @@ def main():
         else:
             pressure = 0
             actual_pop_shape = tuple([int(np) for np in pop_shape.split('x')])
+            if math.prod(actual_pop_shape) != pop_size:
+                raise ValueError(f'The product of dimensions in pop shape {actual_pop_shape} does not math the pop size {pop_size}.')
 
         if algorithm in ('gp', 'gsgp'):
             slim_crossover = 'default'
             p_inflate = 0.0
+
+        if 'slim' in algorithm and p_crossover == 0.0:
+            slim_crossover = 'default'
+        if 'slim' in algorithm and p_crossover == 1.0:
+            algorithm = 'slim+sig2'
 
         if algorithm == 'gp':
             gp(X_train=X_train,
@@ -125,6 +132,7 @@ def main():
                dataset_name=dataset,
                pop_size=pop_size,
                n_iter=n_iter,
+               p_xo=p_crossover,
                elitism=elitism,
                n_elites=n_elites,
                init_depth=init_depth,
@@ -144,6 +152,7 @@ def main():
                  dataset_name=dataset,
                  pop_size=pop_size,
                  n_iter=n_iter,
+                 p_xo=p_crossover,
                  elitism=elitism,
                  n_elites=n_elites,
                  init_depth=init_depth,
@@ -161,15 +170,17 @@ def main():
                  X_test=X_test,
                  y_test=y_test,
                  dataset_name=dataset,
-                 slim_version=algorithm,
+                 slim_version=algorithm.upper(),
                  pop_size=pop_size,
                  n_iter=n_iter,
+                 p_xo=p_crossover,
                  elitism=elitism,
                  n_elites=n_elites,
                  init_depth=init_depth,
                  p_inflate=p_inflate,
                  p_inflate_post=p_inflate,
                  iter_post=0,
+                 slim_crossover=slim_crossover,
                  pressure=pressure,
                  torus_dim=torus_dim,
                  radius=radius,
@@ -185,12 +196,12 @@ def main():
             with open(os.path.join(results_path, f'completed_{run_id}.txt'), 'a+') as terminal_std_out:
                 terminal_std_out.write(args_string)
                 terminal_std_out.write('\n')
-            print(f'Completed run: {args_string}.')
+            print(f'Completed run: {all_items_string}.')
     except Exception as e:
         error_string = str(traceback.format_exc())
         with open(os.path.join(run_with_exceptions_path, f'{args_string.replace(",", "__")}'), 'w') as f:
-            f.write(error_string)
-        print(f'\nException in run: {args_string}.\n{str(e)}\n')
+            f.write(all_items_string + '\n\n' + error_string)
+        print(f'\nException in run: {all_items_string}.\n\n{str(e)}\n\n')
 
 
 if __name__ == '__main__':

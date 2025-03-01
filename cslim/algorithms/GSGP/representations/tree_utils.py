@@ -67,7 +67,7 @@ def nested_depth_calculator(operator, depths):
     elif operator.__name__ == "ot_delta_mul_False":
         depths[0] += 5
     elif operator.__name__ == "geometric_crossover":
-        depths[:] += 2
+        depths[:] = [dd + 2 for dd in depths]
         depths.append(depths[-1] + 1)
     return max(depths)
 

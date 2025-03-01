@@ -15,6 +15,9 @@ def compute_path_run_log_and_settings(
         n_iter: int,
         n_elites: int,
         pressure: int,
+        p_crossover: float,
+        p_inflate: float,
+        slim_crossover: str,
         torus_dim: int,
         radius: int,
         cmp_rate: float,
@@ -24,6 +27,7 @@ def compute_path_run_log_and_settings(
 
     s = os.path.join(
         s,
+        f'{slim_crossover}_pxo{str(round(p_crossover, 3)).replace(".", "d")}pinf{str(round(p_inflate, 3)).replace(".", "d")}',
         f'{method.lower().strip()}_{dataset_name.lower().strip()}',
         f'pop{pop_size}gen{n_iter}elites{n_elites}shape{"x".join([str(n) for n in pop_shape])}',
         f'pressure{pressure}torus{torus_dim}radius{radius}cmprate{str(round(cmp_rate, 3)).replace(".", "d")}',

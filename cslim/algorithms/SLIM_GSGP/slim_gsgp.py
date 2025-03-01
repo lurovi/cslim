@@ -384,8 +384,12 @@ class SLIM_GSGP:
                 p1, p2 = simple_selection_process(is_cellular_selection=self.is_cellular_selection, competitor_rate=self.cmp_rate, neighbors_topology=neighbors_topology, all_neighborhoods_indices=all_neighborhoods_indices, coordinate=current_coordinate)
 
                 if random.random() < self.p_xo:
-                    pass  # implement crossover
-                    offs_pop.append(p1)
+                    offs = self.crossover(p1, p2, X_train, X_test, reconstruct=reconstruct)  # implement crossover
+                    # understand if xo return 1 or 2 offsprings
+                    if isinstance(offs, tuple):
+                        offs_pop.extend([offs[0], offs[1]])
+                    else:
+                        offs_pop.append(offs)
                 else:
                     if random.random() < self.p_deflate:
                         if p1.size == 1:

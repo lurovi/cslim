@@ -12,12 +12,11 @@ python3 main.py --seed_index "${1}" \
                 --slim_crossover "${8}" \
                 --p_inflate "${9}" \
                 --p_crossover "${10}" \
-                --p_mutation "${11}" \
-                --torus_dim "${12}" \
-                --pop_shape "${13}" \
-                --radius "${14}" \
-                --cmp_rate "${15}" \
-                --run_id "${16}"
+                --torus_dim "${11}" \
+                --pop_shape "${12}" \
+                --radius "${13}" \
+                --cmp_rate "${14}" \
+                --run_id "${15}"
 
 
 end=$(date +%s)

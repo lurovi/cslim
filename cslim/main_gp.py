@@ -2,6 +2,7 @@
 This script runs the StandardGP algorithm on various datasets and configurations,
 logging the results for further analysis.
 """
+import math
 import time
 import uuid
 
@@ -79,6 +80,9 @@ def gp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = None
     else:
         pressure = 0
 
+    if math.prod(pop_shape) != pop_size:
+        raise ValueError(f'The product of dimensions in pop shape {pop_shape} does not math the pop size {pop_size}.')
+
     validate_inputs(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test,
                     pop_size=pop_size, n_iter=n_iter, elitism=elitism, n_elites=n_elites,
                     pressure=pressure, torus_dim=torus_dim, radius=radius, cmp_rate=cmp_rate, pop_shape=pop_shape,
@@ -104,6 +108,9 @@ def gp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = None
         n_iter=n_iter,
         n_elites=n_elites,
         pressure=pressure,
+        p_crossover=p_xo,
+        p_inflate=0.0,
+        slim_crossover='default',
         torus_dim=torus_dim,
         radius=radius,
         cmp_rate=cmp_rate,

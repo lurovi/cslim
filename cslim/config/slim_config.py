@@ -47,22 +47,19 @@ slim_gsgp_parameters = {
     "ms": None,
     "inflate_mutator": None,
     "deflate_mutator": deflate_mutation,
-    "p_xo": 0,
     "settings_dict": settings_dict,
     "find_elit_func": get_best_min,
-    "p_inflate": None,
     "copy_parent": None,
     "operator": None,
     "torus_dim": 0,
     "radius": 0,
     "cmp_rate": 0.0
 }
-slim_gsgp_parameters["p_m"] = 1 - slim_gsgp_parameters["p_xo"]
 
 slim_gsgp_pi_init = {
     'FUNCTIONS': FUNCTIONS,
     'CONSTANTS': CONSTANTS,
-    "p_c": 0
+    "p_c": 0.0
 }
 
 
@@ -72,8 +69,7 @@ def update_slim_config(
         verbose: int = 1,
         reconstruct: bool = True,
         pressure: int = 2,
-        p_xo: float = 0,
-        p_c: float = 0,
+        p_c: float = 0.0,
         torus_dim: int = 0,
         radius: int = 0,
         cmp_rate: float = 0.0
@@ -84,8 +80,6 @@ def update_slim_config(
     slim_gsgp_solve_parameters['reconstruct'] = reconstruct
     slim_gsgp_parameters['pressure'] = pressure
     slim_gsgp_parameters['selector'] = tournament_selection_min_slim(pressure)
-    slim_gsgp_parameters['p_xo'] = p_xo
-    slim_gsgp_parameters['p_m'] = 1 - slim_gsgp_parameters['p_xo']
     slim_gsgp_pi_init['p_c'] = p_c
 
     slim_gsgp_parameters['torus_dim'] = torus_dim

@@ -4,20 +4,15 @@
 
 ## Installation
 
-To install the library, locally clone this repo and use the following command while being in the folder containing setup.py (ensure you have activated a python environment with at least python 3.10):
-```sh
-pip3 install -U .
-```
-Additionally, make sure to install all required dependencies:
-```sh
-pip3 install -r requirements.txt
-```
-You can also create the environment directly from conda:
+To install the library, locally clone this repo, enter the folder of the repo, and create the environment directly from conda:
+
 ```sh
 conda env create -f environment.yml
 conda activate cslim_env
 pip3 install -U .
 ```
+
+The latter line actually installs the library within the environment.
 
 ## Usage
 ### Running GP 

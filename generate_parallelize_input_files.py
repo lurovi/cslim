@@ -23,7 +23,7 @@ def create_input_file(output_file, param_combinations):
 
     with open(output_file, "w") as f:
         for params in param_combinations:
-            f.write(",".join(str(params[key]) for key in params.keys()) + "\n")
+            f.write(",".join(str(params[key]) for key in params.keys()) + "," + output_file + "\n")
 
     print(f"Generated input file: {output_file}")
 
@@ -31,15 +31,19 @@ def create_input_file(output_file, param_combinations):
 def main():
     parser = argparse.ArgumentParser(description="Generate .txt file for parallelize_main.sh")
     parser.add_argument("--json_path", type=str, help="Path to the JSON file containing parameters, extension included.")
-    parser.add_argument("--output_file", type=str, help="Path to the output .txt file, extension included.")
     args = parser.parse_args()
+
+    # Derive output .txt filename from json_path
+    json_dir, json_filename = os.path.split(args.json_path)
+    txt_filename = os.path.splitext(json_filename)[0] + ".txt"
+    output_file = os.path.join(json_dir, txt_filename)
 
     # Load parameters from JSON file
     with open(args.json_path, "r") as f:
         params = json.load(f)
 
     param_combinations = generate_param_combinations(params)
-    create_input_file(args.output_file, param_combinations)
+    create_input_file(output_file, param_combinations)
 
 
 if __name__ == "__main__":

@@ -11,6 +11,8 @@ from argparse import ArgumentParser, Namespace
 import torch.multiprocessing as mp
 import torch
 
+from cslim.utils.logger import is_valid_filename
+
 
 def main():
     completed_csv_lock = threading.Lock()
@@ -88,6 +90,9 @@ def main():
     all_items_string = ",".join(f"{key}={value}" for key, value in vars(cmd_args).items())
 
     try:
+        if not is_valid_filename(run_id):
+            raise ValueError(f'run_id {run_id} is not a valid filename.')
+
         if seed_index < 1:
             raise AttributeError(f'seed_index does not start from 1, it is {seed_index}.')
 
@@ -198,10 +203,15 @@ def main():
                 terminal_std_out.write('\n')
             print(f'Completed run: {all_items_string}.')
     except Exception as e:
-        error_string = str(traceback.format_exc())
-        with open(os.path.join(run_with_exceptions_path, f'{args_string.replace(",", "__")}'), 'w') as f:
-            f.write(all_items_string + '\n\n' + error_string)
-        print(f'\nException in run: {all_items_string}.\n\n{str(e)}\n\n')
+        try:
+            error_string = str(traceback.format_exc())
+            with open(os.path.join(run_with_exceptions_path, f'{args_string.replace(",", "__")}'), 'w') as f:
+                f.write(all_items_string + '\n\n' + error_string)
+            print(f'\nException in run: {all_items_string}.\n\n{str(e)}\n\n')
+        except Exception as ee:
+            with open(os.path.join(run_with_exceptions_path, 'error_in_error.txt'), 'w') as f:
+                f.write(str(traceback.format_exc()) + '\n\n')
+            print(str(ee))
 
 
 if __name__ == '__main__':

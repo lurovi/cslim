@@ -77,7 +77,7 @@ def log_settings(path: str, settings_dict: list, unique_run_id: UUID) -> None:
         None
     """
     if not os.path.isdir('/'.join(path.split('/')[:-1])):
-        os.makedirs('/'.join(path.split('/')[:-1]))
+        os.makedirs('/'.join(path.split('/')[:-1]), exist_ok=True)
     settings_dict = merge_settings(*settings_dict)
     del settings_dict["TERMINALS"]
 
@@ -133,7 +133,7 @@ def logger(
         None
     """
     if not os.path.isdir(path):
-        os.makedirs(path)
+        os.makedirs(path, exist_ok=True)
     with open(os.path.join(path, f"seed{seed}_run.csv"), "a", newline="") as file:
         writer = csv.writer(file)
         infos = copy(run_info) if run_info is not None else []

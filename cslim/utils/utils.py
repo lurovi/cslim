@@ -126,7 +126,7 @@ def tensor_dimensioned_sum(dim):
 
 
 def verbose_reporter(
-        dataset, generation, pop_val_fitness, pop_test_fitness, timing, nodes, scale_nodes_with_log10=False
+        dataset, generation, pop_val_fitness, pop_test_fitness, timing, nodes, step=1, scale_nodes_with_log10=False
 ):
     """
     Prints a formatted report of generation, fitness values, timing, and node count.
@@ -143,6 +143,8 @@ def verbose_reporter(
         Time taken for the process.
     nodes : int
         Count of nodes in the population.
+    step : int
+        Specify at how many generations you want to print the info of the current generation.
     scale_nodes_with_log10 : bool
         If True, a log10 is applied to each number of nodes to avoid getting large numbers and possibly overflow (default is False).
 
@@ -210,30 +212,31 @@ def verbose_reporter(
             + "|"
         )
     else:
-        print(
-            "|"
-            + " " * 5
-            + str(dataset)
-            + " " * (20 - digits_dataset)
-            + "|"
-            + " " * 7
-            + str(generation)
-            + " " * (7 - digits_generation)
-            + "|"
-            + " " * 3
-            + str(float(pop_val_fitness))
-            + " " * (20 - digits_val_fit)
-            + "|"
-            + test_text
-            + " " * 3
-            + str(timing)
-            + " " * (21 - digits_timing)
-            + "|"
-            + " " * 6
-            + str(nodes_)
-            + " " * (12 - digits_nodes)
-            + "|"
-        )
+        if generation % step == 0:
+            print(
+                "|"
+                + " " * 5
+                + str(dataset)
+                + " " * (20 - digits_dataset)
+                + "|"
+                + " " * 7
+                + str(generation)
+                + " " * (7 - digits_generation)
+                + "|"
+                + " " * 3
+                + str(float(pop_val_fitness))
+                + " " * (20 - digits_val_fit)
+                + "|"
+                + test_text
+                + " " * 3
+                + str(timing)
+                + " " * (21 - digits_timing)
+                + "|"
+                + " " * 6
+                + str(nodes_)
+                + " " * (12 - digits_nodes)
+                + "|"
+            )
 
 
 def get_terminals(X):

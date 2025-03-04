@@ -136,14 +136,78 @@ def logger(
         os.makedirs(path, exist_ok=True)
     with open(os.path.join(path, f"seed{seed}_run.csv"), "a", newline="") as file:
         writer = csv.writer(file)
-        infos = copy(run_info) if run_info is not None else []
-        nodes_ = round(math.log10(nodes), 6) if scale_nodes_with_log10 else nodes
-        infos.extend([seed, generation, float(pop_val_fitness), timing, nodes_])
-
-        if additional_infos is not None:
-            infos.extend(additional_infos)
+        infos = single_generation_log(
+            generation=generation,
+            pop_val_fitness=pop_val_fitness,
+            timing=timing,
+            nodes=nodes,
+            additional_infos=additional_infos,
+            run_info=run_info,
+            seed=seed,
+            scale_nodes_with_log10=scale_nodes_with_log10
+        )
 
         writer.writerow(infos)
+
+
+def single_generation_log(
+    generation: int,
+    pop_val_fitness: float,
+    timing: float,
+    nodes: int,
+    additional_infos: list = None,
+    run_info: list = None,
+    seed: int = 0,
+    scale_nodes_with_log10: bool = False
+) -> list:
+    """
+    Compute log data for a single generation.
+
+    Args:
+        generation (int): Current generation number.
+        pop_val_fitness (float): Population's validation fitness value.
+        timing (float): Time taken for the process.
+        nodes (int): Count of nodes in the population.
+        additional_infos (list, optional): Population's test fitness value(s) and diversity measurements. Defaults to None.
+        run_info (list, optional): Information about the run. Defaults to None.
+        seed (int, optional): The seed used in random, numpy, and torch libraries. Defaults to 0.
+        scale_nodes_with_log10 (bool, optional): If True, a log10 is applied to each number of nodes to avoid getting large numbers and possibly overflow (default is False).
+
+    Returns:
+        list
+    """
+    infos = copy(run_info) if run_info is not None else []
+    nodes_ = round(math.log10(nodes), 6) if scale_nodes_with_log10 else nodes
+    infos.extend([seed, generation, float(pop_val_fitness), timing, nodes_])
+
+    if additional_infos is not None:
+        infos.extend(additional_infos)
+
+    return infos
+
+
+def persist_all_run_log(
+    path: str,
+    resulting_data_run: list,
+    seed: int = 0,
+) -> None:
+    """
+    Logs information into a CSV file.
+
+    Args:
+        path (str): Path containing the log.
+        resulting_data_run (list): all the run log for all the generations.
+        seed (int, optional): The seed used in random, numpy, and torch libraries. Defaults to 0.
+
+    Returns:
+        None
+    """
+    if not os.path.isdir(path):
+        os.makedirs(path, exist_ok=True)
+    with open(os.path.join(path, f"seed{seed}_run.csv"), "a", newline="") as file:
+        writer = csv.writer(file)
+        for infos in resulting_data_run:
+            writer.writerow(infos)
 
 
 def drop_experiment_from_logger(experiment_id: str | int, log_path: str) -> None:

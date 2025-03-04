@@ -27,7 +27,7 @@ def slim(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
          ms: Callable = generate_random_uniform(0, 1), p_inflate: float = 0.5, p_inflate_post: float = 0.5, iter_post: int = 0,
          slim_crossover: str = 'default',
          pressure: int = 2, torus_dim: int = 0, radius: int = 0, cmp_rate: float = 0.0, pop_shape: tuple[int, ...] = tuple(),
-         log_path: str = '', seed: int = 1):
+         log_path: str = '', seed: int = 1, verbose: int = 1):
     """
     Main function to execute the SLIM GSGP algorithm on specified datasets
 
@@ -81,6 +81,8 @@ def slim(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
         Shape of the grid containing the population in cellular selection (makes no sense if no cellular selection is performed).
     seed : int, optional
         Seed for the randomness
+    verbose: int, optional
+        Verbosity level.
 
     Returns
     -------
@@ -119,7 +121,7 @@ def slim(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
                     init_depth=init_depth, log_path=log_path)
     assert 0 <= p_xo <= 1, "p_xo must be a number between 0 and 1"
 
-    update_slim_config(pressure=pressure, torus_dim=torus_dim, radius=radius, cmp_rate=cmp_rate)
+    update_slim_config(pressure=pressure, torus_dim=torus_dim, radius=radius, cmp_rate=cmp_rate, verbose=verbose)
 
     if log_path.strip() == '':
         raise ValueError(f'Please, specify a directory in which you can save the log of the run.')

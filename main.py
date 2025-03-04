@@ -6,6 +6,7 @@ from cslim.main_gp import gp
 from cslim.main_slim import slim
 from cslim.main_gsgp import gsgp
 import os
+import zlib
 import threading
 from argparse import ArgumentParser, Namespace
 import torch.multiprocessing as mp
@@ -13,10 +14,10 @@ import torch
 
 from cslim.utils.logger import is_valid_filename
 
+completed_csv_lock = threading.Lock()
+
 
 def main():
-    completed_csv_lock = threading.Lock()
-
     torch.use_deterministic_algorithms(True)
     # Setting the device in which data have to be loaded. It can be either CPU or GPU (cuda), if available.
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -67,6 +68,8 @@ def main():
                             help=f"Competitor rate.")
     arg_parser.add_argument("--run_id", type=str, default='default',
                             help="The run id, used for logging purposes of successful runs.")
+    arg_parser.add_argument("--verbose", required=False, action="store_true",
+                            help="Verbose flag.")
 
     cmd_args: Namespace = arg_parser.parse_args()
 
@@ -85,6 +88,8 @@ def main():
     radius: int = cmd_args.radius
     cmp_rate: float = cmd_args.cmp_rate
     run_id: str = cmd_args.run_id
+
+    verbose: int = int(cmd_args.verbose)
 
     args_string = f"{seed_index},{algorithm},{dataset},{pop_size},{n_iter},{n_elites},{pressure},{slim_crossover},{p_inflate},{p_crossover},{torus_dim},{pop_shape},{radius},{cmp_rate},{run_id}"
     all_items_string = ",".join(f"{key}={value}" for key, value in vars(cmd_args).items())
@@ -147,7 +152,8 @@ def main():
                cmp_rate=cmp_rate,
                pop_shape=actual_pop_shape,
                log_path=results_path,
-               seed=seed
+               seed=seed,
+               verbose=verbose,
                )
         elif algorithm == 'gsgp':
             gsgp(X_train=X_train,
@@ -167,7 +173,8 @@ def main():
                  cmp_rate=cmp_rate,
                  pop_shape=actual_pop_shape,
                  log_path=results_path,
-                 seed=seed
+                 seed=seed,
+                 verbose=verbose,
                  )
         elif 'slim' in algorithm:
             slim(X_train=X_train,
@@ -192,7 +199,8 @@ def main():
                  cmp_rate=cmp_rate,
                  pop_shape=actual_pop_shape,
                  log_path=results_path,
-                 seed=seed
+                 seed=seed,
+                 verbose=verbose,
                  )
         else:
             raise AttributeError(f'Unrecognized algorithm {algorithm}.')
@@ -205,7 +213,7 @@ def main():
     except Exception as e:
         try:
             error_string = str(traceback.format_exc())
-            with open(os.path.join(run_with_exceptions_path, f'{args_string.replace(",", "__")}'), 'w') as f:
+            with open(os.path.join(run_with_exceptions_path, f'error_{zlib.adler32(bytes(args_string, "utf-8"))}.txt'), 'w') as f:
                 f.write(all_items_string + '\n\n' + error_string)
             print(f'\nException in run: {all_items_string}.\n\n{str(e)}\n\n')
         except Exception as ee:

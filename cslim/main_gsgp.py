@@ -17,7 +17,7 @@ def gsgp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
          dataset_name: str = None, pop_size: int = 100, n_iter: int = 100, p_xo: float = 0.0, elitism: bool = True,
          n_elites: int = 1, init_depth: int = 8, ms: Callable = generate_random_uniform(0, 1),
          pressure: int = 2, torus_dim: int = 0, radius: int = 0, cmp_rate: float = 0.0, pop_shape: tuple[int, ...] = tuple(),
-         log_path: str = '', seed: int = 1):
+         log_path: str = '', seed: int = 1, verbose: int = 1):
     """
     Main function to execute the Standard GSGP algorithm on specified datasets
 
@@ -61,7 +61,8 @@ def gsgp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
         The path where is created the log directory where results are saved.
     seed : int, optional
         Seed for the randomness
-
+    verbose: int, optional
+        Verbosity level.
 
     Returns
     -------
@@ -93,7 +94,7 @@ def gsgp(X_train: torch.Tensor, y_train: torch.Tensor, X_test: torch.Tensor = No
 
     unique_run_id = uuid.uuid1()
 
-    update_gsgp_config(pressure=pressure, torus_dim=torus_dim, radius=radius, cmp_rate=cmp_rate)
+    update_gsgp_config(pressure=pressure, torus_dim=torus_dim, radius=radius, cmp_rate=cmp_rate, verbose=verbose)
 
     if log_path.strip() == '':
         raise ValueError(f'Please, specify a directory in which you can save the log of the run.')

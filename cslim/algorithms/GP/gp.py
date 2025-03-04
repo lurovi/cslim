@@ -7,7 +7,7 @@ from cslim.algorithms.GP.representations.population import Population
 from cslim.algorithms.GP.representations.tree import Tree
 from cslim.cellular.support import create_neighbors_topology_factory, compute_all_possible_neighborhoods, weights_matrix_for_morans_I, simple_selection_process
 from cslim.utils.diversity import one_matrix_zero_diagonal, niche_entropy, gsgp_pop_div_from_vectors, global_moran_I
-from cslim.utils.logger import logger
+from cslim.utils.logger import logger, single_generation_log, persist_all_run_log
 from cslim.utils.utils import verbose_reporter
 
 
@@ -130,6 +130,8 @@ class GP:
         all_possible_coordinates, all_neighborhoods_indices = compute_all_possible_neighborhoods(pop_size=self.pop_size, pop_shape=self.pop_shape, is_cellular_selection=self.is_cellular_selection, neighbors_topology_factory=self.neighbors_topology_factory)
         weights_matrix_moran = weights_matrix_for_morans_I(pop_size=self.pop_size, is_cellular_selection=self.is_cellular_selection, all_possible_coordinates=all_possible_coordinates, all_neighborhoods_indices=all_neighborhoods_indices)
 
+        resulting_data_run = []
+
         start = time.time()
 
         # Initialize the population
@@ -146,7 +148,7 @@ class GP:
 
         if log != 0:
             self.log_initial_population(
-                population, end - start, log, log_path, run_info, weights_matrix_moran, X_train
+                resulting_data_run, population, end - start, log, log_path, run_info, weights_matrix_moran, X_train
             )
 
         if verbose != 0:
@@ -181,7 +183,7 @@ class GP:
 
             if log != 0:
                 self.log_generation(
-                    it, population, end - start, log, log_path, run_info, weights_matrix_moran, X_train
+                    resulting_data_run, it, population, end - start, log, log_path, run_info, weights_matrix_moran, X_train
                 )
 
             if verbose != 0:
@@ -193,6 +195,8 @@ class GP:
                     end - start,
                     self.elite.node_count,
                 )
+
+        persist_all_run_log(path=log_path, resulting_data_run=resulting_data_run, seed=self.seed)
 
     def evolve_population(
         self,
@@ -276,7 +280,7 @@ class GP:
         offs_pop.evaluate(ffunction, X=X_train, y=y_train)
         return offs_pop, start
 
-    def log_initial_population(self, population, elapsed_time, log, log_path, run_info, weights_matrix_moran, X_train):
+    def log_initial_population(self, resulting_data_run, population, elapsed_time, log, log_path, run_info, weights_matrix_moran, X_train):
         """
         Log the initial population.
 
@@ -366,8 +370,7 @@ class GP:
         else:
             add_info = [self.elite.test_fitness, self.elite.node_count, log]
 
-        logger(
-            log_path,
+        infos = single_generation_log(
             0,
             self.elite.fitness,
             elapsed_time,
@@ -376,9 +379,10 @@ class GP:
             run_info=run_info,
             seed=self.seed,
         )
+        resulting_data_run.append(infos)
 
     def log_generation(
-        self, generation, population, elapsed_time, log, log_path, run_info, weights_matrix_moran, X_train
+        self, resulting_data_run, generation, population, elapsed_time, log, log_path, run_info, weights_matrix_moran, X_train
     ):
         """
         Log the results for the current generation.
@@ -470,8 +474,7 @@ class GP:
         else:
             add_info = [self.elite.test_fitness, self.elite.node_count, log]
 
-        logger(
-            log_path,
+        infos = single_generation_log(
             generation,
             self.elite.fitness,
             elapsed_time,
@@ -480,3 +483,4 @@ class GP:
             run_info=run_info,
             seed=self.seed,
         )
+        resulting_data_run.append(infos)

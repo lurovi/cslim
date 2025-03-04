@@ -14,7 +14,7 @@ from cslim.algorithms.SLIM_GSGP.representations.individual import Individual
 from cslim.algorithms.SLIM_GSGP.representations.population import Population
 from cslim.utils.diversity import gsgp_pop_div_from_vectors, global_moran_I
 from cslim.cellular.support import one_matrix_zero_diagonal, create_neighbors_topology_factory, compute_all_possible_neighborhoods, weights_matrix_for_morans_I, simple_selection_process
-from cslim.utils.logger import logger
+from cslim.utils.logger import logger, single_generation_log, persist_all_run_log
 from cslim.utils.utils import verbose_reporter, show_individual
 
 
@@ -167,6 +167,8 @@ class SLIM_GSGP:
 
         all_possible_coordinates, all_neighborhoods_indices = compute_all_possible_neighborhoods(pop_size=self.pop_size, pop_shape=self.pop_shape, is_cellular_selection=self.is_cellular_selection, neighbors_topology_factory=self.neighbors_topology_factory)
         weights_matrix_moran = weights_matrix_for_morans_I(pop_size=self.pop_size, is_cellular_selection=self.is_cellular_selection, all_possible_coordinates=all_possible_coordinates, all_neighborhoods_indices=all_neighborhoods_indices)
+
+        resulting_data_run = []
 
         start = time.time()
 
@@ -345,8 +347,7 @@ class SLIM_GSGP:
 
                 add_info = [self.elite.test_fitness, self.elite.nodes_count, log]
 
-            logger(
-                log_path,
+            infos = single_generation_log(
                 0,
                 self.elite.fitness,
                 end - start,
@@ -355,6 +356,7 @@ class SLIM_GSGP:
                 run_info=run_info,
                 seed=self.seed,
             )
+            resulting_data_run.append(infos)
 
         if verbose != 0:
             verbose_reporter(
@@ -664,8 +666,7 @@ class SLIM_GSGP:
                 else:
                     add_info = [self.elite.test_fitness, self.elite.nodes_count, log]
 
-                logger(
-                    log_path,
+                infos = single_generation_log(
                     it,
                     self.elite.fitness,
                     end - start,
@@ -674,6 +675,7 @@ class SLIM_GSGP:
                     run_info=run_info,
                     seed=self.seed,
                 )
+                resulting_data_run.append(infos)
 
             if verbose != 0:
                 verbose_reporter(
@@ -684,3 +686,5 @@ class SLIM_GSGP:
                     end - start,
                     self.elite.nodes_count,
                 )
+
+        persist_all_run_log(path=log_path, resulting_data_run=resulting_data_run, seed=self.seed)

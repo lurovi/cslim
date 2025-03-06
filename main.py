@@ -1,5 +1,6 @@
 import math
 import traceback
+import cProfile
 
 from cslim.datasets.data_loader import read_csv_data
 from cslim.main_gp import gp
@@ -70,6 +71,8 @@ def main():
                             help="The run id, used for logging purposes of successful runs.")
     arg_parser.add_argument("--verbose", required=False, action="store_true",
                             help="Verbose flag.")
+    arg_parser.add_argument("--profile", required=False, action="store_true",
+                            help="Whether to run and log profiling of code or not.")
 
     cmd_args: Namespace = arg_parser.parse_args()
 
@@ -90,9 +93,15 @@ def main():
     run_id: str = cmd_args.run_id
 
     verbose: int = int(cmd_args.verbose)
+    profiling: int = int(cmd_args.profile)
 
     args_string = f"{seed_index},{algorithm},{dataset},{pop_size},{n_iter},{n_elites},{pressure},{slim_crossover},{p_inflate},{p_crossover},{torus_dim},{pop_shape},{radius},{cmp_rate},{run_id}"
     all_items_string = ",".join(f"{key}={value}" for key, value in vars(cmd_args).items())
+
+    pr = None
+    if profiling != 0:
+        pr = cProfile.Profile()
+        pr.enable()
 
     try:
         if not is_valid_filename(run_id):
@@ -220,6 +229,10 @@ def main():
             with open(os.path.join(run_with_exceptions_path, 'error_in_error.txt'), 'w') as f:
                 f.write(str(traceback.format_exc()) + '\n\n')
             print(str(ee))
+
+    if profiling != 0:
+        pr.disable()
+        pr.print_stats(sort='tottime')
 
 
 if __name__ == '__main__':

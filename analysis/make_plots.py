@@ -1,32 +1,12 @@
 import json
-import os
 import statistics
-import math
 import fastplot
 import seaborn as sns
 import numpy as np
-#from adjustText import adjust_text
 from typing import Optional
-import matplotlib.pyplot as plt
 import pandas as pd
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
-from cslim.utils.logger import compute_path_run_log_and_settings
-from cslim.utils.stats import perform_mannwhitneyu_holm_bonferroni, is_mannwhitneyu_passed, is_kruskalwallis_passed
-
-
-
-def load_json(
-        base_path: str,
-        comparison_type: str,
-        alternative: str,
-        type_of_result: str,
-        p_inflate_as_str: str,
-        for_each_gen: bool
-) -> dict:
-    with open(base_path + f'complete_results_{"for_each_gen_" if for_each_gen else ""}' + comparison_type + '_' + 'p_inflate_' + p_inflate_as_str + '_' + alternative + '_' + type_of_result + '.json', 'r') as f:
-        data = json.load(f)
-    return data
 
 
 def compute_pareto_fronts(all_scatter_points):
@@ -51,80 +31,16 @@ def compute_pareto_fronts(all_scatter_points):
     return fronts
 
 
-def my_callback_scatter(plt, d, metric, methods_alias):
-    fig, ax = plt.subplots(figsize=(7, 7), layout='constrained')
-
-    all_scatter_points = list(zip(d['RMSE'], d['Log10NNodes']))
-
-    for rmse, log10nnodes, color, marker in zip(d['RMSE'], d['Log10NNodes'], d['Color'], d['Marker']):
-        ax.scatter(rmse, log10nnodes, c=color, marker=marker, s=100, edgecolor='black', linewidth=0.8)
-
-    pareto_fronts = compute_pareto_fronts(all_scatter_points)
-    for front in pareto_fronts:
-        front_sorted = front.sort_values(by='RMSE')
-        ax.plot(front_sorted['RMSE'], front_sorted['Log10NNodes'], linestyle='-', linewidth=1, color='purple',
-                alpha=0.5)
-
-    ax.set_ylim(2.3, 4.5)
-    ax.set_yticks([3.0, 4.0])
-    #ax.set_xlim(5.0, 12.0)
-    ax.tick_params(axis='both', which='both', reset=False, bottom=False, top=False, left=False, right=False)
-    ax.set_xlabel('RMSE')
-    ax.set_ylabel('$\log_{10} (\ell)$')
-    #ax.set_title(f'Methods Pareto Front ({metric} across all datasets and repetitions)')
-    ax.grid(True, axis='both', which='major', color='gray', linestyle='--', linewidth=0.5)
-
-
-def my_callback_scatter_grid(plt, d, metric, methods_alias, dataset_names, dataset_acronyms, n, m):
-    fig, ax = plt.subplots(n, m, figsize=(20, 20), layout='constrained')
-    
-    data_i = 0
-    for i in range(n):
-        for j in range(m):
-            all_scatter_points = list(zip(d[dataset_names[data_i]]['RMSE'], d[dataset_names[data_i]]['Log10NNodes']))
-            for rmse, log10nnodes, color, marker in zip(d[dataset_names[data_i]]['RMSE'], d[dataset_names[data_i]]['Log10NNodes'], d[dataset_names[data_i]]['Color'], d[dataset_names[data_i]]['Marker']):
-                ax[i, j].scatter(rmse, log10nnodes, c=color, marker=marker, s=100, edgecolor='black', linewidth=0.8)
-
-            pareto_fronts = compute_pareto_fronts(all_scatter_points)
-            for front in pareto_fronts:
-                front_sorted = front.sort_values(by='RMSE')
-                ax[i, j].plot(front_sorted['RMSE'], front_sorted['Log10NNodes'], linestyle='-', linewidth=1, color='purple',
-                        alpha=0.5)
-
-            ax[i, j].set_ylim(2.0, 5.0)
-            ax[i, j].set_yticks([3.0, 4.0])
-            #if dataset_names[data_i] == 'concrete':
-            #    ax[i, j].set_xlim(right=24)
-            ax[i, j].tick_params(axis='both', which='both', reset=False, bottom=False, top=False, left=False, right=False)
-
-            if i == n - 1:
-                ax[i, j].set_xlabel('RMSE')
-            else:
-                ax[i, j].grid(True, axis='both', which='major', color='gray', linestyle='--', linewidth=0.5)
-                ax[i, j].tick_params(labelbottom=True)
-            if j == 0:
-                ax[i, j].set_ylabel('$\log_{10} (\ell)$')
-            else:
-                ax[i, j].grid(True, axis='both', which='major', color='gray', linestyle='--', linewidth=0.5)
-                ax[i, j].tick_params(labelleft=False) #ax[i, j].set_yticklabels([])
-            if data_i == len(dataset_names) - 1:
-                ax[i, j].tick_params(pad=7)
-            ax[i, j].set_title(dataset_acronyms[dataset_names[data_i]])
-            ax[i, j].grid(True, axis='both', which='major', color='gray', linestyle='--', linewidth=0.5)            
-            
-            data_i += 1
-
-    #fig.suptitle(f'Methods Pareto Front ({metric} across all datasets and repetitions)')
-
-
 def methods_pareto_front(
         path: str,
         algorithms: list[str],
+        PLOT_ARGS: dict[str, dict],
+        dataset_names: list[str],
+        dataset_acronyms: dict[str, str],
         dataset: Optional[str] = None,
         grid: bool = False,
         to_normalize: bool = False
 ) -> None:
-    PLOT_ARGS = {'rcParams': {'text.latex.preamble': r'\usepackage{amsmath}'}}
     with open(path, 'r') as f:
         data = json.load(f)
     
@@ -135,7 +51,6 @@ def methods_pareto_front(
   
     all_methods = list(data_rmse.keys())
     all_datasets = list(data_rmse[all_methods[0]].keys())
-    dataset_acronyms = {'airfoil': 'ARF', 'concrete': 'CNC', 'parkinson': 'PRK', 'slump': 'SLM', 'yacht': 'YCH', 'istanbul': 'IST', 'qsaraquatic': 'QSR'}
     methods_alias = {'GP': 'GP', 'GSGP': 'GSGP',
                      'SLIM+SIG1': r'$\text{SLIM}^{+}_{\text{SIG1}}$', 'SLIM+SIG2': r'$\text{SLIM}^{+}_{\text{SIG2}}$', 'SLIM+ABS': r'$\text{SLIM}^{+}_{\text{ABS}}$',
                      'SLIM*SIG1': r'$\text{SLIM}^{*}_{\text{SIG1}}$', 'SLIM*SIG2': r'$\text{SLIM}^{*}_{\text{SIG2}}$', 'SLIM*ABS': r'$\text{SLIM}^{*}_{\text{ABS}}$'}
@@ -246,21 +161,81 @@ def methods_pareto_front(
             d['Marker'].append(marker)
         
     if grid:
-        fastplot.plot(None, f'pareto_median_grid.pdf', mode='callback', callback=lambda plt: my_callback_scatter_grid(plt, d, 'median', methods_alias, ['airfoil', 'concrete', 'slump', 'yacht', 'parkinson', 'qsaraquatic'], dataset_acronyms, 3, 2), style='latex', **PLOT_ARGS)
+        fastplot.plot(None, f'pareto_median_grid.pdf', mode='callback', callback=lambda plt: my_callback_scatter_grid(plt, d, 'median', methods_alias, dataset_names, dataset_acronyms, 3, 2), style='latex', **PLOT_ARGS)
     else:
         fastplot.plot(None, f'pareto_median.pdf', mode='callback', callback=lambda plt: my_callback_scatter(plt, d, 'median', methods_alias), style='latex', **PLOT_ARGS)
-    
 
-def my_callback_boxplot(plt, d, metric, palette):
-    fig, ax = plt.subplots(figsize=(8, 8), layout='constrained')
+
+def my_callback_scatter(plt, d, metric, methods_alias):
+    fig, ax = plt.subplots(figsize=(7, 7), layout='constrained')
+
+    all_scatter_points = list(zip(d['RMSE'], d['Log10NNodes']))
+
+    for rmse, log10nnodes, color, marker in zip(d['RMSE'], d['Log10NNodes'], d['Color'], d['Marker']):
+        ax.scatter(rmse, log10nnodes, c=color, marker=marker, s=100, edgecolor='black', linewidth=0.8)
+
+    pareto_fronts = compute_pareto_fronts(all_scatter_points)
+    for front in pareto_fronts:
+        front_sorted = front.sort_values(by='RMSE')
+        ax.plot(front_sorted['RMSE'], front_sorted['Log10NNodes'], linestyle='-', linewidth=1, color='purple',
+                alpha=0.5)
+
+    ax.set_ylim(2.3, 4.5)
+    ax.set_yticks([3.0, 4.0])
+    # ax.set_xlim(5.0, 12.0)
     ax.tick_params(axis='both', which='both', reset=False, bottom=False, top=False, left=False, right=False)
+    ax.set_xlabel(r'\rmse')
+    ax.set_ylabel(r'\logNumNodes')
+    # ax.set_title(f'Methods Pareto Front ({metric} across all datasets and repetitions)')
     ax.grid(True, axis='both', which='major', color='gray', linestyle='--', linewidth=0.5)
-    sns.boxplot(pd.DataFrame(d), x='Algorithm', y=metric, hue='Topology', palette=palette, legend=False, log_scale=10, fliersize=0.0, showfliers=False, ax=ax)
 
 
+def my_callback_scatter_grid(plt, d, metric, methods_alias, dataset_names, dataset_acronyms, n, m):
+    fig, ax = plt.subplots(n, m, figsize=(20, 20), layout='constrained')
 
-def create_boxplot(path: str, dataset_name: str, algorithms: list[str], type_of_result: str, all_together: bool = False, all_datasets: list[str] = []):
-    PLOT_ARGS = {'rcParams': {'text.latex.preamble': r'\usepackage{amsmath}'}}
+    data_i = 0
+    for i in range(n):
+        for j in range(m):
+            all_scatter_points = list(zip(d[dataset_names[data_i]]['RMSE'], d[dataset_names[data_i]]['Log10NNodes']))
+            for rmse, log10nnodes, color, marker in zip(d[dataset_names[data_i]]['RMSE'],
+                                                        d[dataset_names[data_i]]['Log10NNodes'],
+                                                        d[dataset_names[data_i]]['Color'],
+                                                        d[dataset_names[data_i]]['Marker']):
+                ax[i, j].scatter(rmse, log10nnodes, c=color, marker=marker, s=100, edgecolor='black', linewidth=0.8)
+
+            pareto_fronts = compute_pareto_fronts(all_scatter_points)
+            for front in pareto_fronts:
+                front_sorted = front.sort_values(by='RMSE')
+                ax[i, j].plot(front_sorted['RMSE'], front_sorted['Log10NNodes'], linestyle='-', linewidth=1,
+                              color='purple',
+                              alpha=0.5)
+
+            ax[i, j].set_ylim(2.0, 5.0)
+            ax[i, j].set_yticks([3.0, 4.0])
+            # if dataset_names[data_i] == 'concrete':
+            #    ax[i, j].set_xlim(right=24)
+            ax[i, j].tick_params(axis='both', which='both', reset=False, bottom=False, top=False, left=False,
+                                 right=False)
+
+            if i == n - 1:
+                ax[i, j].set_xlabel(r'\rmse')
+            else:
+                ax[i, j].grid(True, axis='both', which='major', color='gray', linestyle='--', linewidth=0.5)
+                ax[i, j].tick_params(labelbottom=True)
+            if j == 0:
+                ax[i, j].set_ylabel(r'\logNumNodes')
+            else:
+                ax[i, j].grid(True, axis='both', which='major', color='gray', linestyle='--', linewidth=0.5)
+                ax[i, j].tick_params(labelleft=False)  # ax[i, j].set_yticklabels([])
+            if data_i == len(dataset_names) - 1:
+                ax[i, j].tick_params(pad=7)
+            ax[i, j].set_title(dataset_acronyms[dataset_names[data_i]])
+            ax[i, j].grid(True, axis='both', which='major', color='gray', linestyle='--', linewidth=0.5)
+
+            data_i += 1
+
+
+def create_boxplot(path: str, dataset_name: str, algorithms: list[str], type_of_result: str, palette: dict[str, str], PLOT_ARGS: dict[str, dict], all_together: bool = False, all_datasets: list[str] = []):
     with open(path, 'r') as f:
         data = json.load(f)
     
@@ -326,153 +301,30 @@ def create_boxplot(path: str, dataset_name: str, algorithms: list[str], type_of_
                     d["Algorithm"].append(algorithm)
                     d["Topology"].append(topology)
                     d["Color"].append(color)
-        
-    palette = {'$\mathcal{T}^{2}_{' + str(1) + '}$': '#C5F30C',
-               '$\mathcal{T}^{2}_{' + str(2) + '}$': '#31AB0C',
-               '$\mathcal{T}^{2}_{' + str(3) + '}$': '#283ADF',
-               '$\mathcal{T}^{0}$': '#990000'}
+
     fastplot.plot(None, f'boxplot.pdf', mode='callback', callback=lambda plt: my_callback_boxplot(plt, d, metric, palette), style='latex', **PLOT_ARGS)
 
 
-
-def my_callback_lineplot_grid(plt, d, metric, num_gen, methods, methods_alias, dataset_names, dataset_acronyms, palette, aggregate, with_dashed_line, test):
-    if with_dashed_line:
-        n, m = len(dataset_names), 2 + len(methods) // 2
-    else:
-        n, m = 2, 4
-        figsize = (8, 4)
-    figsize = (8, 8)
-    if aggregate:
-        n = 1
-        if not with_dashed_line:
-            n = 2
-        dataset_names = [''] * 1000
-        dataset_acronyms = {'': ''}
-        figsize = (8, 4)
-    d = pd.DataFrame(d)
-    fig, ax = plt.subplots(n, m, figsize=figsize, layout='constrained', squeeze=False)
-    x = list(range(num_gen))
-
-    if with_dashed_line:
-        methods = ['GP', 'GSGP'] + [('SLIM+ABS', 'SLIM*ABS'), ('SLIM+SIG1', 'SLIM*SIG1'), ('SLIM+SIG2', 'SLIM*SIG2')]
-    else:
-        methods = ['GP', 'SLIM*ABS', 'SLIM*SIG1', 'SLIM*SIG2', 'GSGP', 'SLIM+ABS', 'SLIM+SIG1', 'SLIM+SIG2']
-
-    met_i = 0
-    for i in range(n):
-        for j in range(m):
-            dataset = dataset_names[i]
-            data_acronym = dataset_acronyms[dataset]
-
-            algs = [methods[j]]
-            if not with_dashed_line:
-                algs = [methods[met_i]]
-            if isinstance(algs[0], tuple):
-                alg_plus, alg_times = algs[0][0], algs[0][1]
-                algs = [alg_plus, alg_times]
-
-            if not test:
-                for alg in algs:
-                    alg_alias = methods_alias[alg]
-                    curr_d = d[(d["Dataset"] == data_acronym) & (d["Algorithm"] == alg_alias)]
-                    for topology in ['$\mathcal{T}^{0}$', '$\mathcal{T}^{2}_{2}$', '$\mathcal{T}^{2}_{3}$']:
-                        color = palette[topology]
-                        all_med = []
-                        all_q1 = []
-                        all_q3 = []
-                        for gen in range(num_gen):
-                            all_med.append(float(curr_d[(curr_d["Topology"] == topology) & (curr_d["Generation"] == gen)]["Median"].squeeze()))
-                            all_q1.append(float(curr_d[(curr_d["Topology"] == topology) & (curr_d["Generation"] == gen)]["Q1"].squeeze()))
-                            all_q3.append(float(curr_d[(curr_d["Topology"] == topology) & (curr_d["Generation"] == gen)]["Q3"].squeeze()))
-                        ax[i, j].plot(x, all_med, label=f'{data_acronym}_{alg_alias}_{topology}', color=color, linestyle='--' if '*' in alg and with_dashed_line else '-', linewidth=1.4 if '*' in alg and with_dashed_line else 1.0, markersize=10)
-                        ax[i, j].fill_between(x, all_q1, all_q3, color=color, alpha=0.1)
-            
-            ax[i, j].set_xlim(0, num_gen)
-            ax[i, j].set_xticks([0, num_gen // 2, num_gen])
-
-            if metric == '$I$':
-                ax[i, j].set_ylim(-0.1, 0.3)
-                ax[i, j].set_yticks([0.0, 0.2])
-            elif metric == '$\log_{10} (\ell)$':
-                ax[i, j].set_ylim(0.5, 4.5)
-                ax[i, j].set_yticks([1.0, 2.0, 3.0, 4.0])
-            elif metric == 'TT':
-                ax[i, j].set_ylim(-2.0, 20.0)
-                ax[i, j].set_yticks([0.0, 10.0, 20.0])
-            elif metric == 'RMSE':
-                if dataset == 'airfoil':
-                    ax[i, j].set_ylim(-6, 56)
-                    ax[i, j].set_yticks([0, 25, 50])
-                elif dataset == 'concrete':
-                    ax[i, j].set_ylim(-4, 34)
-                    ax[i, j].set_yticks([0, 15, 30])
-                elif dataset == 'slump':
-                    ax[i, j].set_ylim(-3, 23)
-                    ax[i, j].set_yticks([0, 10, 20])
-                elif dataset == 'yacht':
-                    ax[i, j].set_ylim(-3, 23)
-                    ax[i, j].set_yticks([0, 10, 20])
-                elif dataset == 'parkinson':
-                    ax[i, j].set_ylim(8.4, 13.6)
-                    ax[i, j].set_yticks([9, 11, 13])
-                elif dataset == 'qsaraquatic':
-                    ax[i, j].set_ylim(1.0, 2.0)
-                    ax[i, j].set_yticks([1.1, 1.5, 1.9])
-
-            ax[i, j].tick_params(axis='both', which='both', reset=False, bottom=False, top=False, left=False, right=False)
-
-            if i == n - 1:
-                ax[i, j].set_xlabel('Generation')
-                if i == 0:
-                    ax[i, j].set_title(methods_alias[algs[0].replace('+', '').replace('*', '')] if with_dashed_line else methods_alias[algs[0]])
-            else:
-                ax[i, j].grid(True, axis='both', which='major', color='gray', linestyle='--', linewidth=0.5)
-                ax[i, j].tick_params(labelbottom=False)
-                ax[i, j].set_xticklabels([])
-                if i == 0:
-                    ax[i, j].set_title(methods_alias[algs[0].replace('+', '').replace('*', '')] if with_dashed_line else methods_alias[algs[0]])
-
-            if j == 0:
-                if metric != 'RMSE':
-                    ax[i, j].set_ylabel(metric)
-                else:
-                    ax[i, j].set_ylabel(metric, labelpad=6 if dataset in ('qsaraquatic') else 10)
-            else:
-                ax[i, j].grid(True, axis='both', which='major', color='gray', linestyle='--', linewidth=0.5)
-                ax[i, j].tick_params(labelleft=False)
-                ax[i, j].set_yticklabels([])
-                if j == m - 1:
-                    #axttt = ax[i, j].twinx()
-                    ax[i, j].set_ylabel(data_acronym, rotation=270, labelpad=14)
-                    ax[i, j].yaxis.set_label_position("right")
-                    ax[i, j].tick_params(labelleft=False)
-                    ax[i, j].set_yticklabels([])
-                    #ax[i, j].yaxis.tick_right()
-     
-            if i == n - 1 and j == m - 1:
-                ax[i, j].tick_params(pad=7)
-            
-            ax[i, j].grid(True, axis='both', which='major', color='gray', linestyle='--', linewidth=0.5)
-            if not with_dashed_line:
-                ax[i, j].set_title(methods_alias[algs[0].replace('+', '').replace('*', '')] if with_dashed_line else methods_alias[algs[0]])
-            met_i += 1
+def my_callback_boxplot(plt, d, metric, palette):
+    fig, ax = plt.subplots(figsize=(8, 8), layout='constrained')
+    ax.tick_params(axis='both', which='both', reset=False, bottom=False, top=False, left=False, right=False)
+    ax.grid(True, axis='both', which='major', color='gray', linestyle='--', linewidth=0.5)
+    sns.boxplot(pd.DataFrame(d), x='Algorithm', y=metric, hue='Topology', palette=palette, legend=False, log_scale=10, fliersize=0.0, showfliers=False, ax=ax)
 
 
-
-def lineplot_grid(path: str, type_of_result: str, num_gen: int, num_seeds: int, aggregate: bool, with_dashed_line: bool, test: bool = False):
-    PLOT_ARGS = {'rcParams': {'text.latex.preamble': r'\usepackage{amsmath}'}}
+def lineplot_grid(path: str, type_of_result: str, dataset_names: list[str], dataset_acronyms: dict[str, str], num_gen: int, num_seeds: int, aggregate: bool, with_dashed_line: bool, palette: dict[str, str], PLOT_ARGS: dict[str, dict], test: bool = False):
     with open(path, 'r') as f:
         data = json.load(f)
     
     data = data[type_of_result]
     if type_of_result == 'moran':
-        metric = '$I$'
+        metric = r'\moranI'
     elif type_of_result == 'training_time':
         metric = 'TT'
     elif type_of_result == 'log_10_num_nodes':
-        metric = '$\log_{10} (\ell)$'
+        metric = r'\logNumNodes'
     elif type_of_result == 'best_overall_test_fitness':
-        metric = 'RMSE'
+        metric = r'\rmse'
     
     all_methods = list(data.keys())
     all_datasets = list(data[all_methods[0]].keys())
@@ -480,7 +332,6 @@ def lineplot_grid(path: str, type_of_result: str, num_gen: int, num_seeds: int, 
                      'SLIMSIG1': r'$\text{SLIM}_{\text{SIG1}}$', 'SLIMSIG2': r'$\text{SLIM}_{\text{SIG2}}$', 'SLIMABS': r'$\text{SLIM}_{\text{ABS}}$', 
                      'SLIM+SIG1': r'$\text{SLIM}^{+}_{\text{SIG1}}$', 'SLIM+SIG2': r'$\text{SLIM}^{+}_{\text{SIG2}}$', 'SLIM+ABS': r'$\text{SLIM}^{+}_{\text{ABS}}$',
                      'SLIM*SIG1': r'$\text{SLIM}^{*}_{\text{SIG1}}$', 'SLIM*SIG2': r'$\text{SLIM}^{*}_{\text{SIG2}}$', 'SLIM*ABS': r'$\text{SLIM}^{*}_{\text{ABS}}$'}
-    dataset_acronyms = {'airfoil': 'ARF', 'concrete': 'CNC', 'parkinson': 'PRK', 'slump': 'SLM', 'yacht': 'YCH', 'istanbul': 'IST', 'qsaraquatic': 'QSR'}
 
     d = {"Median": [], "Q1": [], "Q3": [], "Algorithm": [], "Topology": [], "Color": [], "Dataset": [], "Generation": []}
 
@@ -576,81 +427,215 @@ def lineplot_grid(path: str, type_of_result: str, num_gen: int, num_seeds: int, 
                     d['Color'].append(color)
                     d['Topology'].append(topology)
                     d['Dataset'].append('')
-    
+
+    fastplot.plot(None, f'lineplot_grid_{type_of_result}.pdf', mode='callback',
+                  callback=lambda plt: my_callback_lineplot_grid(plt, d, metric, num_gen=num_gen,
+                                                                 methods=['SLIM+SIG2', 'SLIM*SIG2', 'SLIM+SIG1', 'SLIM*SIG1', 'SLIM+ABS', 'SLIM*ABS'],
+                                                                 methods_alias=methods_alias,
+                                                                 dataset_names=dataset_names,
+                                                                 dataset_acronyms=dataset_acronyms,
+                                                                 palette=palette, aggregate=aggregate,
+                                                                 with_dashed_line=with_dashed_line, test=test), style='latex', **PLOT_ARGS)
+
+
+def my_callback_lineplot_grid(plt, d, metric, num_gen, methods, methods_alias, dataset_names, dataset_acronyms, palette,
+                              aggregate, with_dashed_line, test):
+    if with_dashed_line:
+        n, m = len(dataset_names), 2 + len(methods) // 2
+    else:
+        n, m = 2, 4
+        figsize = (8, 4)
+    figsize = (8, 8)
+    if aggregate:
+        n = 1
+        if not with_dashed_line:
+            n = 2
+        dataset_names = [''] * 1000
+        dataset_acronyms = {'': ''}
+        figsize = (8, 4)
+    d = pd.DataFrame(d)
+    fig, ax = plt.subplots(n, m, figsize=figsize, layout='constrained', squeeze=False)
+    x = list(range(num_gen))
+
+    if with_dashed_line:
+        methods = ['GP', 'GSGP'] + [('SLIM+ABS', 'SLIM*ABS'), ('SLIM+SIG1', 'SLIM*SIG1'), ('SLIM+SIG2', 'SLIM*SIG2')]
+    else:
+        methods = ['GP', 'SLIM*ABS', 'SLIM*SIG1', 'SLIM*SIG2', 'GSGP', 'SLIM+ABS', 'SLIM+SIG1', 'SLIM+SIG2']
+
+    met_i = 0
+    for i in range(n):
+        for j in range(m):
+            dataset = dataset_names[i]
+            data_acronym = dataset_acronyms[dataset]
+
+            algs = [methods[j]]
+            if not with_dashed_line:
+                algs = [methods[met_i]]
+            if isinstance(algs[0], tuple):
+                alg_plus, alg_times = algs[0][0], algs[0][1]
+                algs = [alg_plus, alg_times]
+
+            if not test:
+                for alg in algs:
+                    alg_alias = methods_alias[alg]
+                    curr_d = d[(d["Dataset"] == data_acronym) & (d["Algorithm"] == alg_alias)]
+                    for topology in ['$\mathcal{T}^{0}$', '$\mathcal{T}^{2}_{2}$', '$\mathcal{T}^{2}_{3}$']:
+                        color = palette[topology]
+                        all_med = []
+                        all_q1 = []
+                        all_q3 = []
+                        for gen in range(num_gen):
+                            all_med.append(float(
+                                curr_d[(curr_d["Topology"] == topology) & (curr_d["Generation"] == gen)][
+                                    "Median"].squeeze()))
+                            all_q1.append(float(
+                                curr_d[(curr_d["Topology"] == topology) & (curr_d["Generation"] == gen)][
+                                    "Q1"].squeeze()))
+                            all_q3.append(float(
+                                curr_d[(curr_d["Topology"] == topology) & (curr_d["Generation"] == gen)][
+                                    "Q3"].squeeze()))
+                        ax[i, j].plot(x, all_med, label=f'{data_acronym}_{alg_alias}_{topology}', color=color,
+                                      linestyle='--' if '*' in alg and with_dashed_line else '-',
+                                      linewidth=1.4 if '*' in alg and with_dashed_line else 1.0, markersize=10)
+                        ax[i, j].fill_between(x, all_q1, all_q3, color=color, alpha=0.1)
+
+            ax[i, j].set_xlim(0, num_gen)
+            ax[i, j].set_xticks([0, num_gen // 2, num_gen])
+
+            if metric == r'\moranI':
+                ax[i, j].set_ylim(-0.1, 0.3)
+                ax[i, j].set_yticks([0.0, 0.2])
+            elif metric == r'\logNumNodes':
+                ax[i, j].set_ylim(0.5, 4.5)
+                ax[i, j].set_yticks([1.0, 2.0, 3.0, 4.0])
+            elif metric == 'TT':
+                ax[i, j].set_ylim(-2.0, 20.0)
+                ax[i, j].set_yticks([0.0, 10.0, 20.0])
+            elif metric == r'\rmse':
+                if dataset == 'airfoil':
+                    ax[i, j].set_ylim(-6, 56)
+                    ax[i, j].set_yticks([0, 25, 50])
+                elif dataset == 'concrete':
+                    ax[i, j].set_ylim(-4, 34)
+                    ax[i, j].set_yticks([0, 15, 30])
+                elif dataset == 'slump':
+                    ax[i, j].set_ylim(-3, 23)
+                    ax[i, j].set_yticks([0, 10, 20])
+                elif dataset == 'yacht':
+                    ax[i, j].set_ylim(-3, 23)
+                    ax[i, j].set_yticks([0, 10, 20])
+                elif dataset == 'parkinson':
+                    ax[i, j].set_ylim(8.4, 13.6)
+                    ax[i, j].set_yticks([9, 11, 13])
+                elif dataset == 'qsaraquatic':
+                    ax[i, j].set_ylim(1.0, 2.0)
+                    ax[i, j].set_yticks([1.1, 1.5, 1.9])
+
+            ax[i, j].tick_params(axis='both', which='both', reset=False, bottom=False, top=False, left=False,
+                                 right=False)
+
+            if i == n - 1:
+                ax[i, j].set_xlabel('Generation')
+                if i == 0:
+                    ax[i, j].set_title(
+                        methods_alias[algs[0].replace('+', '').replace('*', '')] if with_dashed_line else methods_alias[
+                            algs[0]])
+            else:
+                ax[i, j].grid(True, axis='both', which='major', color='gray', linestyle='--', linewidth=0.5)
+                ax[i, j].tick_params(labelbottom=False)
+                ax[i, j].set_xticklabels([])
+                if i == 0:
+                    ax[i, j].set_title(
+                        methods_alias[algs[0].replace('+', '').replace('*', '')] if with_dashed_line else methods_alias[
+                            algs[0]])
+
+            if j == 0:
+                if metric != r'\rmse':
+                    ax[i, j].set_ylabel(metric)
+                else:
+                    ax[i, j].set_ylabel(metric, labelpad=6 if dataset in ('qsaraquatic') else 10)
+            else:
+                ax[i, j].grid(True, axis='both', which='major', color='gray', linestyle='--', linewidth=0.5)
+                ax[i, j].tick_params(labelleft=False)
+                ax[i, j].set_yticklabels([])
+                if j == m - 1:
+                    # axttt = ax[i, j].twinx()
+                    ax[i, j].set_ylabel(data_acronym, rotation=270, labelpad=14)
+                    ax[i, j].yaxis.set_label_position("right")
+                    ax[i, j].tick_params(labelleft=False)
+                    ax[i, j].set_yticklabels([])
+                    # ax[i, j].yaxis.tick_right()
+
+            if i == n - 1 and j == m - 1:
+                ax[i, j].tick_params(pad=7)
+
+            ax[i, j].grid(True, axis='both', which='major', color='gray', linestyle='--', linewidth=0.5)
+            if not with_dashed_line:
+                ax[i, j].set_title(
+                    methods_alias[algs[0].replace('+', '').replace('*', '')] if with_dashed_line else methods_alias[
+                        algs[0]])
+            met_i += 1
+
+
+def main():
+    path: str = f'../../cslim-DATA/GPEM/'
+
+    preamble = r'''
+                \usepackage{amsmath}
+                \usepackage{libertine}
+                \usepackage{xspace}
+
+                \newcommand{\rmse}{RMSE\xspace}
+                \newcommand{\moranI}{$I$\xspace}
+                \newcommand{\numNodes}{$\ell$\xspace}
+                \newcommand{\logNumNodes}{$\log_{10} (\ell)$\xspace}
+                \newcommand{\toroid}[2]{$\mathcal{T}^{#1}_{#2}$\xspace}
+                
+                \newcommand{\CxMut}{$\mathcal{E}_{\text{cx,mut}}$\xspace}
+                \newcommand{\Cx}{$\mathcal{E}_{\text{cx}}$\xspace}
+                \newcommand{\Mut}{$\mathcal{E}_{\text{mut}}$\xspace}
+                \newcommand{\explpipe}{exploration pipeline\xspace}
+                
+                \newcommand{\airf}{ARF\xspace}
+                \newcommand{\conc}{CNC\xspace}
+                \newcommand{\slum}{SLM\xspace}
+                \newcommand{\toxi}{TXC\xspace}
+                \newcommand{\yach}{YCH\xspace}
+                \newcommand{\park}{PRK\xspace}
+                \newcommand{\ista}{IST\xspace}
+                \newcommand{\qsar}{QSR\xspace}
+                
+                \newcommand{\slimplusabs}{$\text{SLIM}^{+}_{\text{ABS}}$\xspace}
+                \newcommand{\slimplussigone}{$\text{SLIM}^{+}_{\text{SIG1}}$\xspace}
+                \newcommand{\slimplussigtwo}{$\text{SLIM}^{+}_{\text{SIG2}}$\xspace}
+                \newcommand{\slimmulabs}{$\text{SLIM}^{*}_{\text{ABS}}$\xspace}
+                \newcommand{\slimmulsigone}{$\text{SLIM}^{*}_{\text{SIG1}}$\xspace}
+                \newcommand{\slimmulsigtwo}{$\text{SLIM}^{*}_{\text{SIG2}}$\xspace}
+                
+                \newcommand{\slimplus}{$\text{SLIM}^{+}$\xspace}
+                \newcommand{\slimmul}{$\text{SLIM}^{*}$\xspace}
+                \newcommand{\slimabs}{$\text{SLIM}_{\text{ABS}}$\xspace}
+                \newcommand{\slimsigone}{$\text{SLIM}_{\text{SIG1}}$\xspace}
+                \newcommand{\slimsigtwo}{$\text{SLIM}_{\text{SIG2}}$\xspace}
+                '''
+
+    PLOT_ARGS = {'rcParams': {'text.latex.preamble': preamble, 'pdf.fonttype': 42, 'ps.fonttype': 42}}
+
     palette = {'$\mathcal{T}^{2}_{' + str(1) + '}$': '#C5F30C',
                '$\mathcal{T}^{2}_{' + str(2) + '}$': '#31AB0C',
                '$\mathcal{T}^{2}_{' + str(3) + '}$': '#283ADF',
                '$\mathcal{T}^{0}$': '#990000'}
 
-    fastplot.plot(None, f'lineplot_grid_{type_of_result}.pdf', mode='callback', callback=lambda plt: my_callback_lineplot_grid(plt, d, metric, num_gen=num_gen, methods=['SLIM+SIG2', 'SLIM*SIG2', 'SLIM+SIG1', 'SLIM*SIG1', 'SLIM+ABS', 'SLIM*ABS'], methods_alias=methods_alias, dataset_names=['airfoil', 'concrete', 'slump', 'yacht', 'parkinson', 'qsaraquatic'], dataset_acronyms=dataset_acronyms, palette=palette, aggregate=aggregate, with_dashed_line=with_dashed_line, test=test), style='latex', **PLOT_ARGS)
+    dataset_names: list[str] = ['airfoil', 'concrete', 'slump', 'parkinson', 'yacht', 'qsaraquatic']
+    slim_versions: list[str] = ['SLIM+ABS', 'SLIM+SIG1', 'SLIM+SIG2']
 
+    dataset_acronyms = {'airfoil': r'\airf', 'concrete': r'\conc', 'parkinson': r'\park',
+                        'slump': r'\slum', 'yacht': r'\yach', 'qsaraquatic': r'\qsar'}
+
+    # create_boxplot(path=path + f'all_values.json', dataset_name='parkinson', algorithms=slim_versions, type_of_result='training_time', all_together=True, all_datasets=dataset_names, palette=palette, PLOT_ARGS=PLOT_ARGS)
+    methods_pareto_front(path + f'all_values.json', grid=False, to_normalize=True, algorithms=slim_versions, dataset_names=dataset_names, dataset_acronyms=dataset_acronyms, PLOT_ARGS=PLOT_ARGS)
+    #lineplot_grid(path=path + f'all_values_for_each_gen.json', test=False, type_of_result='log_10_num_nodes', dataset_names=dataset_names, dataset_acronyms=dataset_acronyms, num_gen=1000, num_seeds=30, aggregate=True, with_dashed_line=False, palette=palette, PLOT_ARGS=PLOT_ARGS)
 
 
 if __name__ == '__main__':
-    p_inflate: float = 0.3
-    p_inflate_as_str: str = str(p_inflate).replace(".", "d")
-    num_gen: int = 1000
-    path: str = f'../cslim-DATA/numgen{num_gen}/'
-    comparison_type: str = 'vs_gp_gsgp'
-    for_each_gen: bool = False
-
-    type_of_results: str = ['best_overall_test_fitness', 'log_10_num_nodes', 'moran']
-    alternatives: str = ['less']
-
-    dataset_names: list[str] = ['airfoil', 'concrete', 'slump', 'parkinson', 'yacht', 'qsaraquatic']
-    slim_versions: list[str] = ['SLIM*ABS', 'SLIM*SIG1', 'SLIM*SIG2', 'SLIM+ABS', 'SLIM+SIG1', 'SLIM+SIG2']
-    
-    torus_dim: int = 2
-    all_radius: list[int] = [2, 3]
-    all_cmp_rate: list[float] = [1.0]
-
-    # GENERATE THE JSON WITH ALL THE DATA
-    generate_all_values_json: bool = False
-
-    if generate_all_values_json:
-        data = {type_of_result: {alternative: {} for alternative in alternatives} for type_of_result in type_of_results}
-        for type_of_result in type_of_results:
-            for alternative in alternatives:
-                data[type_of_result][alternative] = load_json(
-                    base_path=path,
-                    comparison_type=comparison_type,
-                    alternative=alternative,
-                    type_of_result=type_of_result,
-                    for_each_gen=for_each_gen,
-                    p_inflate_as_str=p_inflate_as_str
-                )
-        
-        methods: list[str] = slim_versions + ['GP', 'GSGP']
-        methods = [m.lower() for m in methods]
-        
-        for radius in all_radius:
-            for cmp_rate in all_cmp_rate:
-                methods.append('cgp_' + str(radius) + '_' + str(cmp_rate))
-                methods.append('cgsgp_' + str(radius) + '_' + str(cmp_rate))
-                for slim_version in slim_versions:
-                    methods.append('c' + slim_version.lower() + '_' + str(radius) + '_' + str(cmp_rate))
-
-        values = {type_of_result: {method: {dataset_name: [] for dataset_name in dataset_names} for method in methods} for type_of_result in type_of_results}
-        
-        for type_of_result in type_of_results:
-            curr_data = data[type_of_result]['less']
-            for dataset_name in dataset_names:
-                values[type_of_result]['gp'][dataset_name] = curr_data['gp'][dataset_name]['baseline']
-                values[type_of_result]['gsgp'][dataset_name] = curr_data['gsgp'][dataset_name]['baseline']
-                for radius in all_radius:
-                    for cmp_rate in all_cmp_rate:
-                        values[type_of_result]['cgp_' + str(radius) + '_' + str(cmp_rate)][dataset_name] = curr_data['gp'][dataset_name][f'{torus_dim}_{radius}_{cmp_rate}']
-                        values[type_of_result]['cgsgp_' + str(radius) + '_' + str(cmp_rate)][dataset_name] = curr_data['gsgp'][dataset_name][f'{torus_dim}_{radius}_{cmp_rate}']
-
-                for slim_version in slim_versions:
-                    values[type_of_result][slim_version.lower()][dataset_name] = curr_data[slim_version.lower()][dataset_name]['baseline']
-                    for radius in all_radius:
-                        for cmp_rate in all_cmp_rate:
-                            values[type_of_result]['c' + slim_version.lower() + '_' + str(radius) + '_' + str(cmp_rate)][dataset_name] = curr_data[slim_version.lower()][dataset_name][f'{torus_dim}_{radius}_{cmp_rate}']
-
-        with open(f'all_values{"_for_each_gen" if for_each_gen else ""}.json', 'w') as f:
-            json.dump(values, f, indent=4)
-
-    #methods_pareto_front(path + f'all_values.json', grid=True, to_normalize=True, algorithms=slim_versions)
-    #create_boxplot(path=path + f'all_values.json', dataset_name='parkinson', algorithms=slim_versions, type_of_result='training_time', all_together=True, all_datasets=['airfoil', 'concrete', 'slump', 'parkinson', 'yacht', 'qsaraquatic'])
-    lineplot_grid(path=path + f'all_values_for_each_gen.json', test=False, type_of_result='log_10_num_nodes', num_gen=1000, num_seeds=30, aggregate=True, with_dashed_line=False)
+    main()

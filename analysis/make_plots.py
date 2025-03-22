@@ -5,8 +5,119 @@ import seaborn as sns
 import numpy as np
 from typing import Optional
 import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
+
+def create_legend(label_color_dict, PLOT_ARGS, title=None):
+    fastplot.plot(None, f'legend.pdf', mode='callback',
+                  callback=lambda plt: create_legend_callback(plt, label_color_dict, title),
+                  style='latex', **PLOT_ARGS)
+
+
+def create_legend_callback(plt, label_color_dict, title=None):
+    """
+    Create a legend from a dictionary of labels and colors.
+
+    Parameters:
+    - label_color_dict: dict
+        Dictionary where keys are labels and values are colors.
+    - ax: matplotlib.axes.Axes, optional
+        The axis to which the legend will be added. If None, uses the current axis.
+    - loc: str, optional
+        Location of the legend (default: 'upper right').
+    - title: str, optional
+        Title of the legend.
+    """
+    plt.tight_layout(pad=0)
+    fig, ax = plt.subplots(figsize=(6, 1))  # Small figure with only the legend
+    fig.set_size_inches(2.6, 0.3)
+    ax.axis("off")  # Hide axes
+
+    # Create legend handles
+    handles = [plt.Line2D([0], [0], color=color, lw=4, label=label) for label, color in label_color_dict.items()]
+
+    # Create and center the legend
+    ax.legend(
+        handles=handles,
+        loc="center",
+        title=title,
+        ncol=len(label_color_dict),  # Arrange items in one row
+        frameon=False  # Remove box around legend
+    )
+
+
+def create_horizontal_linestyle_legend(label_linestyle_dict, PLOT_ARGS, title=None):
+    fastplot.plot(None, f'legend.pdf', mode='callback',
+                  callback=lambda plt: create_horizontal_linestyle_legend_callback(plt, label_linestyle_dict, title),
+                  style='latex', **PLOT_ARGS)
+
+
+def create_horizontal_linestyle_legend_callback(plt, label_linestyle_dict, title=None):
+    """
+    Creates an image containing only a centered horizontal legend with different line styles.
+
+    Parameters:
+    - label_linestyle_dict: dict
+        Dictionary where keys are labels and values are line styles.
+    - title: str, optional
+        Title of the legend.
+    - filename: str, optional
+        Name of the file to save the legend (default: 'legend.pdf').
+    """
+    plt.tight_layout(pad=0)
+    fig, ax = plt.subplots(figsize=(len(label_linestyle_dict) * 1.5, 0.5))  # Adjust figure size dynamically
+    fig.set_size_inches(2.8, 0.2)
+    ax.axis("off")  # Hide axes
+
+    # Create legend handles with different line styles
+    handles = [plt.Line2D([0], [0], linestyle=linestyle, color='black', lw=2, label=label, markersize=8)
+               for label, linestyle in label_linestyle_dict.items()]
+
+    # Create and center the legend
+    ax.legend(
+        handles=handles,
+        loc="center",
+        title=title,
+        ncol=len(label_linestyle_dict),  # Arrange items in one row
+        frameon=False,  # Remove box around legend
+        handlelength=1.7  # Reduce line length in legend
+    )
+
+
+def create_marker_legend(label_marker_dict, PLOT_ARGS, title=None):
+    fastplot.plot(None, f'legend.pdf', mode='callback',
+                  callback=lambda plt: create_marker_legend_callback(plt, label_marker_dict, title),
+                  style='latex', **PLOT_ARGS)
+
+
+def create_marker_legend_callback(plt, label_marker_dict, title=None):
+    """
+    Creates an image containing only a vertical legend with markers and minimal surrounding whitespace.
+
+    Parameters:
+    - label_marker_dict: dict
+        Dictionary where keys are labels and values are marker styles.
+    - title: str, optional
+        Title of the legend.
+    """
+    plt.tight_layout(pad=0)
+    fig, ax = plt.subplots(figsize=(2, len(label_marker_dict) * 0.5))  # Adjust figure size dynamically
+    fig.set_size_inches(1.4, 2.6)
+    ax.axis("off")  # Hide axes
+
+    # Create legend handles with markers
+    handles = [plt.Line2D([0], [0], marker=marker, color='black', linestyle='None', markersize=8, label=label)
+               for label, marker in label_marker_dict.items()]
+
+    # Create and center the legend
+    legend = ax.legend(
+        handles=handles,
+        loc="center",
+        title=title,
+        frameon=False  # Remove box around legend
+    )
 
 
 def compute_pareto_fronts(all_scatter_points):
@@ -33,13 +144,17 @@ def compute_pareto_fronts(all_scatter_points):
 
 def methods_pareto_front(
         path: str,
+        palette: dict[str, str],
+        expl_pipe_alias: dict[str, str],
+        methods_alias: dict[str, str],
         algorithms: list[str],
         PLOT_ARGS: dict[str, dict],
         dataset_names: list[str],
         dataset_acronyms: dict[str, str],
         dataset: Optional[str] = None,
         grid: bool = False,
-        to_normalize: bool = False
+        to_normalize: bool = False,
+        zoom: bool = False
 ) -> None:
     with open(path, 'r') as f:
         data = json.load(f)
@@ -49,21 +164,23 @@ def methods_pareto_front(
 
     d = {"RMSE": [], "Log10NNodes": [], "Algorithm": [], "Color": [], "Marker": [], "Topology": []}
   
-    all_methods = list(data_rmse.keys())
-    all_datasets = list(data_rmse[all_methods[0]].keys())
-    methods_alias = {'GP': 'GP', 'GSGP': 'GSGP',
-                     'SLIM+SIG1': r'$\text{SLIM}^{+}_{\text{SIG1}}$', 'SLIM+SIG2': r'$\text{SLIM}^{+}_{\text{SIG2}}$', 'SLIM+ABS': r'$\text{SLIM}^{+}_{\text{ABS}}$',
-                     'SLIM*SIG1': r'$\text{SLIM}^{*}_{\text{SIG1}}$', 'SLIM*SIG2': r'$\text{SLIM}^{*}_{\text{SIG2}}$', 'SLIM*ABS': r'$\text{SLIM}^{*}_{\text{ABS}}$'}
+    all_methods = list(data_rmse['cxmut'].keys())
+    all_datasets = list(data_rmse['cxmut'][all_methods[0]].keys())
+
+    # EUROGP 2025
+    #methods_markers = {
+    #    'GP': 'H', 'GSGP': '*',
+    #    'SLIM+SIG1': '>', 'SLIM+SIG2': '^', 'SLIM+ABS': 'P',
+    #    'SLIM*SIG1': '<', 'SLIM*SIG2': 'v', 'SLIM*ABS': 'X'
+    #}
+
+    # GPEM 2025
     methods_markers = {
-        'GP': 'H', 'GSGP': '*',
-        'SLIM+SIG1': '>', 'SLIM+SIG2': '^', 'SLIM+ABS': 'P',
-        'SLIM*SIG1': '<', 'SLIM*SIG2': 'v', 'SLIM*ABS': 'X'
+       'GP-cxmut': 'o', 'GSGP-cxmut': '*', 'GSGP-cx': 'd', 'GSGP-mut': 'D', 'SLIM+SIG2-cx': 's',
+       'SLIM+SIG1-cxmut': 'v', 'SLIM+SIG2-cxmut': '^', 'SLIM+ABS-cxmut': 'X',
+       'SLIM+SIG1-mut': '<', 'SLIM+SIG2-mut': '>', 'SLIM+ABS-mut': 'P',
     }
-    all_alias_keys = list(methods_alias.keys())    
-    for radius in [1, 2, 3]:
-        for alias in all_alias_keys:
-            methods_alias['c' + alias + '_' + str(radius)] = methods_alias[alias] + '-' + '$\mathcal{T}^{2}_{' + str(radius) + '}$'
-    
+
     if grid:
         d = {dataset_name: {"RMSE": [], "Log10NNodes": [], "Algorithm": [], "Color": [], "Marker": [], "Topology": []} for dataset_name in all_datasets}
     else:
@@ -71,105 +188,106 @@ def methods_pareto_front(
             all_datasets = [dataset]
     
     all_rmse_temp = []
-    for method in all_methods:
-        for dataset in all_datasets:
-            all_rmse_temp.extend(data_rmse[method][dataset])
-    
+    for expl_pipe in expl_pipe_alias:
+        for method in all_methods:
+            for dataset in all_datasets:
+                all_rmse_temp.extend(data_rmse[expl_pipe][method][dataset])
+
     min_rmse, max_rmse = min(all_rmse_temp), max(all_rmse_temp)
 
     max_rmse_per_dataset = {}
     for dataset in all_datasets:
         per_data_rmse_temp = []
-        for method in all_methods:
-            per_data_rmse_temp.extend(data_rmse[method][dataset])
+        for expl_pipe in expl_pipe_alias:
+            for method in all_methods:
+                per_data_rmse_temp.extend(data_rmse[expl_pipe][method][dataset])
         max_rmse_per_dataset[dataset] = max(per_data_rmse_temp)
 
-    for method in all_methods:
-        algorithm = ''
-        color = ''
-        marker = ''
-
-        if method == 'gp':
-            algorithm = 'GP'
-            topology = '$\mathcal{T}^{0}$'
-            color = '#990000'
-            marker = "H"
-        elif method == 'gsgp':
-            algorithm = 'GSGP'
-            topology = '$\mathcal{T}^{0}$'
-            color = '#990000'
-            marker = '*'
-        elif method.startswith('slim'):
-            if method.upper() not in algorithms:
+    for expl_pipe in expl_pipe_alias:
+        for method in all_methods:
+            temp_1, temp_2 = [], []
+            for dataset in all_datasets:
+                temp_1.extend(data_rmse[expl_pipe][method][dataset])
+                temp_2.extend(data_size[expl_pipe][method][dataset])
+            if len(temp_1) == 0 and len(temp_2) == 0:
                 continue
-            algorithm = methods_alias[method.upper()]
-            topology = '$\mathcal{T}^{0}$'
-            color = '#990000'
-            marker = methods_markers[method.upper()]
-        elif method.startswith('c') and '_' in method:
-            radius = method.split('_')[1]
-            topology = '$\mathcal{T}^{2}_{' + str(radius) + '}$'
-            if radius == '2':
-                color = '#31AB0C'
-            elif radius == '3':
-                color = '#283ADF'
-            elif radius == '1':
-                color = '#C5F30C'
+            if expl_pipe == 'cx' and 'slim' in method:
+                continue
 
-            actual_method = method.split('_')[0][1:]
-            if actual_method == 'gp':
-                algorithm = 'GP'
-                marker = "H"
-            elif actual_method == 'gsgp':
-                algorithm = 'GSGP'
-                marker = "*"
-            elif actual_method.startswith('slim'):
-                if actual_method.upper() not in algorithms:
+            algorithm = ''
+            color = ''
+            marker = ''
+
+            if method in ('gp', 'gsgp'):
+                algorithm = methods_alias[method.upper() + '-' + expl_pipe]
+                topology = r'\notoroid'
+                color = palette[topology]
+                marker = methods_markers[method.upper() + '-' + expl_pipe]
+            elif method.startswith('slim'):
+                if method.upper() not in algorithms:
                     continue
-                algorithm = methods_alias[actual_method.upper()]
-                marker = methods_markers[actual_method.upper()]
+                algorithm = methods_alias[method.upper() + '-' + expl_pipe]
+                topology = r'\notoroid'
+                color = palette[topology]
+                marker = methods_markers[method.upper() + '-' + expl_pipe]
+            elif method.startswith('c') and '_' in method:
+                radius = method.split('_')[1]
+                topology = r'\toroid{2}{' + str(radius) + '}'
+                color = palette[topology]
 
-        all_vals_rmse = []
-        all_vals_size = []
-        if grid:
-            for dataset in all_datasets:
-                all_vals_rmse = []
-                all_vals_size = []
-                all_vals_rmse.extend(data_rmse[method][dataset])
-                all_vals_size.extend(data_size[method][dataset])
-                if to_normalize:
-                    d[dataset]["RMSE"].append(statistics.median([this_error / max_rmse_per_dataset[dataset] for this_error in all_vals_rmse]))
-                else:
-                    d[dataset]["RMSE"].append(statistics.median(all_vals_rmse))
-                d[dataset]["Log10NNodes"].append(statistics.median(all_vals_size))
-                d[dataset]['Algorithm'].append(algorithm)
-                d[dataset]['Topology'].append(topology)
-                d[dataset]['Color'].append(color)
-                d[dataset]['Marker'].append(marker)
-        else:
-            for dataset in all_datasets:
-                all_vals_rmse.extend(data_rmse[method][dataset])
-                all_vals_size.extend(data_size[method][dataset])      
-            if to_normalize:
-                d["RMSE"].append(statistics.median([this_error / max_rmse for this_error in all_vals_rmse]))
+                actual_method = method.split('_')[0][1:]
+                if actual_method in ('gp', 'gsgp'):
+                    algorithm = methods_alias[actual_method.upper() + '-' + expl_pipe]
+                    marker = methods_markers[actual_method.upper() + '-' + expl_pipe]
+                elif actual_method.startswith('slim'):
+                    if actual_method.upper() not in algorithms:
+                        continue
+                    algorithm = methods_alias[actual_method.upper() + '-' + expl_pipe]
+                    marker = methods_markers[actual_method.upper() + '-' + expl_pipe]
+
+            all_vals_rmse = []
+            all_vals_size = []
+            if grid:
+                for dataset in all_datasets:
+                    all_vals_rmse = []
+                    all_vals_size = []
+                    all_vals_rmse.extend(data_rmse[expl_pipe][method][dataset])
+                    all_vals_size.extend(data_size[expl_pipe][method][dataset])
+                    if to_normalize:
+                        d[dataset]["RMSE"].append(statistics.median([this_error / max_rmse_per_dataset[dataset] for this_error in all_vals_rmse]))
+                    else:
+                        d[dataset]["RMSE"].append(statistics.median(all_vals_rmse))
+                    d[dataset]["Log10NNodes"].append(statistics.median(all_vals_size))
+                    d[dataset]['Algorithm'].append(algorithm)
+                    d[dataset]['Topology'].append(topology)
+                    d[dataset]['Color'].append(color)
+                    d[dataset]['Marker'].append(marker)
             else:
-                d["RMSE"].append(statistics.median(all_vals_rmse))
-            d["Log10NNodes"].append(statistics.median(all_vals_size))
-            d['Algorithm'].append(algorithm)
-            d['Topology'].append(topology)
-            d['Color'].append(color)
-            d['Marker'].append(marker)
+                for dataset in all_datasets:
+                    all_vals_rmse.extend(data_rmse[expl_pipe][method][dataset])
+                    all_vals_size.extend(data_size[expl_pipe][method][dataset])
+                if to_normalize:
+                    d["RMSE"].append(statistics.median([this_error / max_rmse for this_error in all_vals_rmse]))
+                else:
+                    d["RMSE"].append(statistics.median(all_vals_rmse))
+                d["Log10NNodes"].append(statistics.median(all_vals_size))
+                d['Algorithm'].append(algorithm)
+                d['Topology'].append(topology)
+                d['Color'].append(color)
+                d['Marker'].append(marker)
         
     if grid:
-        fastplot.plot(None, f'pareto_median_grid.pdf', mode='callback', callback=lambda plt: my_callback_scatter_grid(plt, d, 'median', methods_alias, dataset_names, dataset_acronyms, 3, 2), style='latex', **PLOT_ARGS)
+        fastplot.plot(None, f'pareto_median_grid.pdf', mode='callback', callback=lambda plt: my_callback_scatter_grid(plt, d, dataset_names, dataset_acronyms, 3, 2), style='latex', **PLOT_ARGS)
     else:
-        fastplot.plot(None, f'pareto_median.pdf', mode='callback', callback=lambda plt: my_callback_scatter(plt, d, 'median', methods_alias), style='latex', **PLOT_ARGS)
+        fastplot.plot(None, f'pareto_median_{"zoom" if zoom else ""}.pdf', mode='callback', callback=lambda plt: my_callback_scatter(plt, d, zoom), style='latex', **PLOT_ARGS)
 
 
-def my_callback_scatter(plt, d, metric, methods_alias):
-    fig, ax = plt.subplots(figsize=(7, 7), layout='constrained')
+def my_callback_scatter(plt, d, zoom):
+    fig, ax = plt.subplots(figsize=(10, 10), layout='constrained')
 
     all_scatter_points = list(zip(d['RMSE'], d['Log10NNodes']))
+    if zoom:
+        all_scatter_points = [(rmse, log10nnodes) for rmse, log10nnodes in all_scatter_points if 2.5 < log10nnodes < 4.5]
 
     for rmse, log10nnodes, color, marker in zip(d['RMSE'], d['Log10NNodes'], d['Color'], d['Marker']):
         ax.scatter(rmse, log10nnodes, c=color, marker=marker, s=100, edgecolor='black', linewidth=0.8)
@@ -180,17 +298,20 @@ def my_callback_scatter(plt, d, metric, methods_alias):
         ax.plot(front_sorted['RMSE'], front_sorted['Log10NNodes'], linestyle='-', linewidth=1, color='purple',
                 alpha=0.5)
 
-    ax.set_ylim(2.3, 4.5)
-    ax.set_yticks([3.0, 4.0])
-    # ax.set_xlim(5.0, 12.0)
+    if zoom:
+        ax.set_ylim(2.5, 4.5)
+    else:
+        ax.set_yscale('log')
+    #ax.set_yticks([2, 4, 6, 8])
+    #ax.set_xlim(5, 12)
+    #ax.set_xticks([7, 10])
     ax.tick_params(axis='both', which='both', reset=False, bottom=False, top=False, left=False, right=False)
-    ax.set_xlabel(r'\rmse')
-    ax.set_ylabel(r'\logNumNodes')
-    # ax.set_title(f'Methods Pareto Front ({metric} across all datasets and repetitions)')
+    ax.set_xlabel(r'\rmse', fontsize=15)
+    ax.set_ylabel(r'\logNumNodes', fontsize=15)
     ax.grid(True, axis='both', which='major', color='gray', linestyle='--', linewidth=0.5)
 
 
-def my_callback_scatter_grid(plt, d, metric, methods_alias, dataset_names, dataset_acronyms, n, m):
+def my_callback_scatter_grid(plt, d, dataset_names, dataset_acronyms, n, m):
     fig, ax = plt.subplots(n, m, figsize=(20, 20), layout='constrained')
 
     data_i = 0
@@ -246,8 +367,8 @@ def create_boxplot(path: str, dataset_name: str, algorithms: list[str], type_of_
         metric = 'TT'
 
     methods_alias = {'GP': 'GP', 'GSGP': 'GSGP',
-                     'SLIM+SIG1': r'$\text{SLIM}^{+}_{\text{SIG1}}$', 'SLIM+SIG2': r'$\text{SLIM}^{+}_{\text{SIG2}}$', 'SLIM+ABS': r'$\text{SLIM}^{+}_{\text{ABS}}$',
-                     'SLIM*SIG1': r'$\text{SLIM}^{*}_{\text{SIG1}}$', 'SLIM*SIG2': r'$\text{SLIM}^{*}_{\text{SIG2}}$', 'SLIM*ABS': r'$\text{SLIM}^{*}_{\text{ABS}}$'}
+                     'SLIM+SIG1': r'\slimplussigone', 'SLIM+SIG2': r'\slimplussigtwo', 'SLIM+ABS': r'\slimplusabs',
+                     'SLIM*SIG1': r'\slimmulsigone', 'SLIM*SIG2': r'\slimmulsigtwo', 'SLIM*ABS': r'\slimmulabs'}
     
 
     d = {metric: [], "Algorithm": [], "Topology": [], "Color": []}
@@ -256,27 +377,22 @@ def create_boxplot(path: str, dataset_name: str, algorithms: list[str], type_of_
 
         if method == 'gp':
             algorithm = 'GP'
-            topology = '$\mathcal{T}^{0}$'
-            color = '#990000'
+            topology = r'\notoroid'
+            color = palette[topology]
         elif method == 'gsgp':
             algorithm = 'GSGP'
-            topology = '$\mathcal{T}^{0}$'
-            color = '#990000'
+            topology = r'\notoroid'
+            color = palette[topology]
         elif method.startswith('slim'):
             if method.upper() not in algorithms:
                 continue
             algorithm = methods_alias[method.upper()]
-            topology = '$\mathcal{T}^{0}$'
-            color = '#990000'
+            topology = r'\notoroid'
+            color = palette[topology]
         elif method.startswith('c') and '_' in method:
             radius = method.split('_')[1]
-            topology = '$\mathcal{T}^{2}_{' + str(radius) + '}$'
-            if radius == '2':
-                color = '#31AB0C'
-            elif radius == '3':
-                color = '#283ADF'
-            elif radius == '1':
-                color = '#C5F30C'
+            topology = r'\toroid{2}{' + str(radius) + '}'
+            color = palette[topology]
 
             actual_method = method.split('_')[0][1:]
             if actual_method == 'gp':
@@ -312,7 +428,23 @@ def my_callback_boxplot(plt, d, metric, palette):
     sns.boxplot(pd.DataFrame(d), x='Algorithm', y=metric, hue='Topology', palette=palette, legend=False, log_scale=10, fliersize=0.0, showfliers=False, ax=ax)
 
 
-def lineplot_grid(path: str, type_of_result: str, dataset_names: list[str], dataset_acronyms: dict[str, str], num_gen: int, num_seeds: int, aggregate: bool, with_dashed_line: bool, palette: dict[str, str], PLOT_ARGS: dict[str, dict], test: bool = False):
+def lineplot_grid(
+        path: str,
+        type_of_result: str,
+        dataset_names: list[str],
+        algorithms: list[str],
+        dataset_acronyms: dict[str, str],
+        num_gen: int,
+        num_seeds: int,
+        aggregate: bool,
+        expl_pipe_alias: dict[str, str],
+        methods_alias: dict[str, str],
+        palette: dict[str, str],
+        linestyles: dict[str, str],
+        linewidths: dict[str, float],
+        PLOT_ARGS: dict[str, dict],
+        test: bool = False
+):
     with open(path, 'r') as f:
         data = json.load(f)
     
@@ -320,56 +452,80 @@ def lineplot_grid(path: str, type_of_result: str, dataset_names: list[str], data
     if type_of_result == 'moran':
         metric = r'\moranI'
     elif type_of_result == 'training_time':
-        metric = 'TT'
+        metric = r'TT'
     elif type_of_result == 'log_10_num_nodes':
         metric = r'\logNumNodes'
     elif type_of_result == 'best_overall_test_fitness':
         metric = r'\rmse'
+    else:
+        raise ValueError(f'Unrecognized type_of_result {type_of_result} in lineplot_grid.')
     
-    all_methods = list(data.keys())
-    all_datasets = list(data[all_methods[0]].keys())
-    methods_alias = {'GP': 'GP', 'GSGP': 'GSGP',
-                     'SLIMSIG1': r'$\text{SLIM}_{\text{SIG1}}$', 'SLIMSIG2': r'$\text{SLIM}_{\text{SIG2}}$', 'SLIMABS': r'$\text{SLIM}_{\text{ABS}}$', 
-                     'SLIM+SIG1': r'$\text{SLIM}^{+}_{\text{SIG1}}$', 'SLIM+SIG2': r'$\text{SLIM}^{+}_{\text{SIG2}}$', 'SLIM+ABS': r'$\text{SLIM}^{+}_{\text{ABS}}$',
-                     'SLIM*SIG1': r'$\text{SLIM}^{*}_{\text{SIG1}}$', 'SLIM*SIG2': r'$\text{SLIM}^{*}_{\text{SIG2}}$', 'SLIM*ABS': r'$\text{SLIM}^{*}_{\text{ABS}}$'}
+    all_methods = list(data['cxmut'].keys())
+    all_datasets = list(data['cxmut'][all_methods[0]].keys())
+    d = {"Median": [], "Q1": [], "Q3": [], "Algorithm": [],
+         "ExplPipe": [], "LineStyle": [], "LineWidth": [],
+         "Topology": [], "Color": [], "Dataset": [], "Generation": []}
 
-    d = {"Median": [], "Q1": [], "Q3": [], "Algorithm": [], "Topology": [], "Color": [], "Dataset": [], "Generation": []}
+    for expl_pipe in expl_pipe_alias:
+        for method in all_methods:
+            replicate_slim_cx = False
+            temp_1 = []
+            for dataset in all_datasets:
+                temp_1.extend(data[expl_pipe][method][dataset])
+            if len(temp_1) == 0:
+                if expl_pipe == 'cx' and 'slim' in method:
+                    replicate_slim_cx = True
+                else:
+                    continue
 
-    for method in all_methods:
-        if method == 'gp':
-            algorithm = 'GP'
-            topology = '$\mathcal{T}^{0}$'
-            color = '#990000'
-        elif method == 'gsgp':
-            algorithm = 'GSGP'
-            topology = '$\mathcal{T}^{0}$'
-            color = '#990000'
-        elif method.startswith('slim'):
-            algorithm = methods_alias[method.upper()]
-            topology = '$\mathcal{T}^{0}$'
-            color = '#990000'
-        elif method.startswith('c') and '_' in method:
-            radius = method.split('_')[1]
-            topology = '$\mathcal{T}^{2}_{' + str(radius) + '}$'
-            if radius == '2':
-                color = '#31AB0C'
-            elif radius == '3':
-                color = '#283ADF'
-            elif radius == '1':
-                color = '#C5F30C'
+            e_pipe_alias = expl_pipe_alias[expl_pipe]
+            algorithm = ''
+            color = ''
+            topology = ''
+            linestyle = linestyles[e_pipe_alias]
+            linewidth = linewidths[e_pipe_alias]
 
-            actual_method = method.split('_')[0][1:]
-            if actual_method == 'gp':
-                algorithm = 'GP'
-            elif actual_method == 'gsgp':
-                algorithm = 'GSGP'
-            elif actual_method.startswith('slim'):
-                algorithm = methods_alias[actual_method.upper()]
+            if method in ('gp', 'gsgp'):
+                algorithm = methods_alias[method.upper()]
+                topology = r'\notoroid'
+                color = palette[topology]
+            elif method.startswith('slim'):
+                if method.upper() not in algorithms:
+                    continue
+                algorithm = methods_alias[method.upper()]
+                topology = r'\notoroid'
+                color = palette[topology]
+            elif method.startswith('c') and '_' in method:
+                radius = method.split('_')[1]
+                topology = r'\toroid{2}{' + str(radius) + '}'
+                color = palette[topology]
 
-        if test:
+                actual_method = method.split('_')[0][1:]
+                if actual_method in ('gp', 'gsgp'):
+                    algorithm = methods_alias[actual_method.upper()]
+                elif actual_method.startswith('slim'):
+                    if actual_method.upper() not in algorithms:
+                        continue
+                    algorithm = methods_alias[actual_method.upper()]
 
-            if not aggregate:
-                for dataset in all_datasets:
+
+            if test:
+
+                if not aggregate:
+                    for dataset in all_datasets:
+                        for gen in range(num_gen):
+                            d['Median'].append(1)
+                            d['Q1'].append(1)
+                            d['Q3'].append(1)
+                            d['Generation'].append(gen)
+                            d['Algorithm'].append(algorithm)
+                            d['Color'].append(color)
+                            d['Topology'].append(topology)
+                            d['Dataset'].append(dataset_acronyms[dataset])
+                            d['ExplPipe'].append(e_pipe_alias)
+                            d['LineWidth'].append(linewidth)
+                            d['LineStyle'].append(linestyle)
+                else:
                     for gen in range(num_gen):
                         d['Median'].append(1)
                         d['Q1'].append(1)
@@ -378,27 +534,46 @@ def lineplot_grid(path: str, type_of_result: str, dataset_names: list[str], data
                         d['Algorithm'].append(algorithm)
                         d['Color'].append(color)
                         d['Topology'].append(topology)
-                        d['Dataset'].append(dataset_acronyms[dataset])
+                        d['Dataset'].append('')
+                        d['ExplPipe'].append(e_pipe_alias)
+                        d['LineWidth'].append(linewidth)
+                        d['LineStyle'].append(linestyle)
+
             else:
-                for gen in range(num_gen):
-                    d['Median'].append(1)
-                    d['Q1'].append(1)
-                    d['Q3'].append(1)
-                    d['Generation'].append(gen)
-                    d['Algorithm'].append(algorithm)
-                    d['Color'].append(color)
-                    d['Topology'].append(topology)
-                    d['Dataset'].append('')
 
-        else:
-
-            if not aggregate:
-                for dataset in all_datasets:
-                    all_values = data[method][dataset]
+                if not aggregate:
+                    for dataset in all_datasets:
+                        if replicate_slim_cx:
+                            all_values = data[expl_pipe][method.replace('*sig1', '+sig2').replace('*abs', '+sig2').replace('+sig1', '+sig2').replace('+abs', '+sig2')][dataset]
+                        else:
+                            all_values = data[expl_pipe][method][dataset]
+                        for gen in range(num_gen):
+                            temp = []
+                            for seed in range(num_seeds):
+                                temp.append(all_values[seed][gen])
+                            median = statistics.median(temp)
+                            q1 = float(np.percentile(temp, 25))
+                            q3 = float(np.percentile(temp, 75))
+                            d['Median'].append(median)
+                            d['Q1'].append(q1)
+                            d['Q3'].append(q3)
+                            d['Generation'].append(gen)
+                            d['Algorithm'].append(algorithm)
+                            d['Color'].append(color)
+                            d['Topology'].append(topology)
+                            d['Dataset'].append(dataset_acronyms[dataset])
+                            d['ExplPipe'].append(e_pipe_alias)
+                            d['LineWidth'].append(linewidth)
+                            d['LineStyle'].append(linestyle)
+                else:
                     for gen in range(num_gen):
                         temp = []
                         for seed in range(num_seeds):
-                            temp.append(all_values[seed][gen])
+                            for dataset in all_datasets:
+                                if replicate_slim_cx:
+                                    temp.append(data[expl_pipe][method.replace('*sig1', '+sig2').replace('*abs', '+sig2').replace('+sig1', '+sig2').replace('+abs', '+sig2')][dataset][seed][gen])
+                                else:
+                                    temp.append(data[expl_pipe][method][dataset][seed][gen])
                         median = statistics.median(temp)
                         q1 = float(np.percentile(temp, 25))
                         q3 = float(np.percentile(temp, 75))
@@ -409,94 +584,65 @@ def lineplot_grid(path: str, type_of_result: str, dataset_names: list[str], data
                         d['Algorithm'].append(algorithm)
                         d['Color'].append(color)
                         d['Topology'].append(topology)
-                        d['Dataset'].append(dataset_acronyms[dataset])
-            else:
-                for gen in range(num_gen):
-                    temp = []
-                    for seed in range(num_seeds):
-                        for dataset in all_datasets:
-                            temp.append(data[method][dataset][seed][gen])
-                    median = statistics.median(temp)
-                    q1 = float(np.percentile(temp, 25))
-                    q3 = float(np.percentile(temp, 75))
-                    d['Median'].append(median)
-                    d['Q1'].append(q1)
-                    d['Q3'].append(q3)
-                    d['Generation'].append(gen)
-                    d['Algorithm'].append(algorithm)
-                    d['Color'].append(color)
-                    d['Topology'].append(topology)
-                    d['Dataset'].append('')
+                        d['Dataset'].append('')
+                        d['ExplPipe'].append(e_pipe_alias)
+                        d['LineWidth'].append(linewidth)
+                        d['LineStyle'].append(linestyle)
 
     fastplot.plot(None, f'lineplot_grid_{type_of_result}.pdf', mode='callback',
                   callback=lambda plt: my_callback_lineplot_grid(plt, d, metric, num_gen=num_gen,
-                                                                 methods=['SLIM+SIG2', 'SLIM*SIG2', 'SLIM+SIG1', 'SLIM*SIG1', 'SLIM+ABS', 'SLIM*ABS'],
+                                                                 methods=algorithms,
                                                                  methods_alias=methods_alias,
                                                                  dataset_names=dataset_names,
                                                                  dataset_acronyms=dataset_acronyms,
                                                                  palette=palette, aggregate=aggregate,
-                                                                 with_dashed_line=with_dashed_line, test=test), style='latex', **PLOT_ARGS)
+                                                                 test=test), style='latex', **PLOT_ARGS)
 
 
-def my_callback_lineplot_grid(plt, d, metric, num_gen, methods, methods_alias, dataset_names, dataset_acronyms, palette,
-                              aggregate, with_dashed_line, test):
-    if with_dashed_line:
-        n, m = len(dataset_names), 2 + len(methods) // 2
-    else:
-        n, m = 2, 4
-        figsize = (8, 4)
+def my_callback_lineplot_grid(plt, d, metric, num_gen,
+                              methods, methods_alias, dataset_names, dataset_acronyms,
+                              palette, aggregate, test):
+    d = pd.DataFrame(d)
+    n, m = len(dataset_names), 2 + len(methods)
     figsize = (8, 8)
-    if aggregate:
-        n = 1
-        if not with_dashed_line:
-            n = 2
+    if aggregate: # TODO: NOT HANDLED YET
+        n = len(set(list(d['LineStyle'])))
         dataset_names = [''] * 1000
         dataset_acronyms = {'': ''}
         figsize = (8, 4)
-    d = pd.DataFrame(d)
     fig, ax = plt.subplots(n, m, figsize=figsize, layout='constrained', squeeze=False)
     x = list(range(num_gen))
 
-    if with_dashed_line:
-        methods = ['GP', 'GSGP'] + [('SLIM+ABS', 'SLIM*ABS'), ('SLIM+SIG1', 'SLIM*SIG1'), ('SLIM+SIG2', 'SLIM*SIG2')]
-    else:
-        methods = ['GP', 'SLIM*ABS', 'SLIM*SIG1', 'SLIM*SIG2', 'GSGP', 'SLIM+ABS', 'SLIM+SIG1', 'SLIM+SIG2']
+    all_methods = ['GP', 'GSGP'] + methods
 
     met_i = 0
     for i in range(n):
         for j in range(m):
             dataset = dataset_names[i]
             data_acronym = dataset_acronyms[dataset]
-
-            algs = [methods[j]]
-            if not with_dashed_line:
-                algs = [methods[met_i]]
-            if isinstance(algs[0], tuple):
-                alg_plus, alg_times = algs[0][0], algs[0][1]
-                algs = [alg_plus, alg_times]
+            alg = all_methods[j]
 
             if not test:
-                for alg in algs:
-                    alg_alias = methods_alias[alg]
-                    curr_d = d[(d["Dataset"] == data_acronym) & (d["Algorithm"] == alg_alias)]
-                    for topology in ['$\mathcal{T}^{0}$', '$\mathcal{T}^{2}_{2}$', '$\mathcal{T}^{2}_{3}$']:
-                        color = palette[topology]
+                alg_alias = methods_alias[alg]
+                curr_d = d[(d["Dataset"] == data_acronym) & (d["Algorithm"] == alg_alias)]
+                for topology in [r'\notoroid', r'\toroid{2}{2}', r'\toroid{2}{3}']:
+                    color = palette[topology]
+                    for e_pipe_alias in [r'\CxMut', r'\Cx', r'\Mut']:
+                        if alg == 'GP' and e_pipe_alias != r'\CxMut':
+                            continue
+                        if e_pipe_alias == r'\Cx' and 'SLIM' in alg:
+                            continue
                         all_med = []
                         all_q1 = []
                         all_q3 = []
                         for gen in range(num_gen):
-                            all_med.append(float(
-                                curr_d[(curr_d["Topology"] == topology) & (curr_d["Generation"] == gen)][
-                                    "Median"].squeeze()))
-                            all_q1.append(float(
-                                curr_d[(curr_d["Topology"] == topology) & (curr_d["Generation"] == gen)][
-                                    "Q1"].squeeze()))
-                            all_q3.append(float(
-                                curr_d[(curr_d["Topology"] == topology) & (curr_d["Generation"] == gen)][
-                                    "Q3"].squeeze()))
-                        ax[i, j].plot(x, all_med, label=f'{data_acronym}_{alg_alias}_{topology}', color=color,
-                                      linestyle='--' if '*' in alg and with_dashed_line else '-',
-                                      linewidth=1.4 if '*' in alg and with_dashed_line else 1.0, markersize=10)
+                            very_curr_d = curr_d[(curr_d["Topology"] == topology) & (curr_d["Generation"] == gen) & (curr_d["ExplPipe"] == e_pipe_alias)]
+                            all_med.append(float(very_curr_d["Median"].squeeze()))
+                            all_q1.append(float(very_curr_d["Q1"].squeeze()))
+                            all_q3.append(float(very_curr_d["Q3"].squeeze()))
+                        ax[i, j].plot(x, all_med, label=f'{data_acronym}_{alg_alias}_{topology}_{e_pipe_alias}', color=color,
+                                      linestyle=str(very_curr_d["LineStyle"].squeeze()),
+                                      linewidth=float(very_curr_d["LineWidth"].squeeze()), markersize=10)
                         ax[i, j].fill_between(x, all_q1, all_q3, color=color, alpha=0.1)
 
             ax[i, j].set_xlim(0, num_gen)
@@ -530,6 +676,10 @@ def my_callback_lineplot_grid(plt, d, metric, num_gen, methods, methods_alias, d
                 elif dataset == 'qsaraquatic':
                     ax[i, j].set_ylim(1.0, 2.0)
                     ax[i, j].set_yticks([1.1, 1.5, 1.9])
+                else:
+                    raise ValueError(f'Unknown dataset {dataset}.')
+            else:
+                raise ValueError(f'Unknown metric {metric}.')
 
             ax[i, j].tick_params(axis='both', which='both', reset=False, bottom=False, top=False, left=False,
                                  right=False)
@@ -537,17 +687,13 @@ def my_callback_lineplot_grid(plt, d, metric, num_gen, methods, methods_alias, d
             if i == n - 1:
                 ax[i, j].set_xlabel('Generation')
                 if i == 0:
-                    ax[i, j].set_title(
-                        methods_alias[algs[0].replace('+', '').replace('*', '')] if with_dashed_line else methods_alias[
-                            algs[0]])
+                    ax[i, j].set_title(methods_alias[alg])
             else:
                 ax[i, j].grid(True, axis='both', which='major', color='gray', linestyle='--', linewidth=0.5)
                 ax[i, j].tick_params(labelbottom=False)
                 ax[i, j].set_xticklabels([])
                 if i == 0:
-                    ax[i, j].set_title(
-                        methods_alias[algs[0].replace('+', '').replace('*', '')] if with_dashed_line else methods_alias[
-                            algs[0]])
+                    ax[i, j].set_title(methods_alias[alg])
 
             if j == 0:
                 if metric != r'\rmse':
@@ -570,10 +716,6 @@ def my_callback_lineplot_grid(plt, d, metric, num_gen, methods, methods_alias, d
                 ax[i, j].tick_params(pad=7)
 
             ax[i, j].grid(True, axis='both', which='major', color='gray', linestyle='--', linewidth=0.5)
-            if not with_dashed_line:
-                ax[i, j].set_title(
-                    methods_alias[algs[0].replace('+', '').replace('*', '')] if with_dashed_line else methods_alias[
-                        algs[0]])
             met_i += 1
 
 
@@ -590,6 +732,7 @@ def main():
                 \newcommand{\numNodes}{$\ell$\xspace}
                 \newcommand{\logNumNodes}{$\log_{10} (\ell)$\xspace}
                 \newcommand{\toroid}[2]{$\mathcal{T}^{#1}_{#2}$\xspace}
+                \newcommand{\notoroid}{$\mathcal{T}^{0}$\xspace}
                 
                 \newcommand{\CxMut}{$\mathcal{E}_{\text{cx,mut}}$\xspace}
                 \newcommand{\Cx}{$\mathcal{E}_{\text{cx}}$\xspace}
@@ -599,10 +742,8 @@ def main():
                 \newcommand{\airf}{ARF\xspace}
                 \newcommand{\conc}{CNC\xspace}
                 \newcommand{\slum}{SLM\xspace}
-                \newcommand{\toxi}{TXC\xspace}
                 \newcommand{\yach}{YCH\xspace}
                 \newcommand{\park}{PRK\xspace}
-                \newcommand{\ista}{IST\xspace}
                 \newcommand{\qsar}{QSR\xspace}
                 
                 \newcommand{\slimplusabs}{$\text{SLIM}^{+}_{\text{ABS}}$\xspace}
@@ -621,10 +762,13 @@ def main():
 
     PLOT_ARGS = {'rcParams': {'text.latex.preamble': preamble, 'pdf.fonttype': 42, 'ps.fonttype': 42}}
 
-    palette = {'$\mathcal{T}^{2}_{' + str(1) + '}$': '#C5F30C',
-               '$\mathcal{T}^{2}_{' + str(2) + '}$': '#31AB0C',
-               '$\mathcal{T}^{2}_{' + str(3) + '}$': '#283ADF',
-               '$\mathcal{T}^{0}$': '#990000'}
+    palette = {r'\notoroid': '#990000',
+               r'\toroid{2}{2}': '#31AB0C',
+               r'\toroid{2}{3}': '#283ADF',
+               }
+
+    expl_pipe_linestyle = {r'\CxMut': '-', r'\Cx': '--', r'\Mut': ':'}
+    expl_pipe_linewidth = {r'\CxMut': 0.7, r'\Cx': 1.5, r'\Mut': 2.3}
 
     dataset_names: list[str] = ['airfoil', 'concrete', 'slump', 'parkinson', 'yacht', 'qsaraquatic']
     slim_versions: list[str] = ['SLIM+ABS', 'SLIM+SIG1', 'SLIM+SIG2']
@@ -632,9 +776,41 @@ def main():
     dataset_acronyms = {'airfoil': r'\airf', 'concrete': r'\conc', 'parkinson': r'\park',
                         'slump': r'\slum', 'yacht': r'\yach', 'qsaraquatic': r'\qsar'}
 
-    # create_boxplot(path=path + f'all_values.json', dataset_name='parkinson', algorithms=slim_versions, type_of_result='training_time', all_together=True, all_datasets=dataset_names, palette=palette, PLOT_ARGS=PLOT_ARGS)
-    methods_pareto_front(path + f'all_values.json', grid=False, to_normalize=True, algorithms=slim_versions, dataset_names=dataset_names, dataset_acronyms=dataset_acronyms, PLOT_ARGS=PLOT_ARGS)
-    #lineplot_grid(path=path + f'all_values_for_each_gen.json', test=False, type_of_result='log_10_num_nodes', dataset_names=dataset_names, dataset_acronyms=dataset_acronyms, num_gen=1000, num_seeds=30, aggregate=True, with_dashed_line=False, palette=palette, PLOT_ARGS=PLOT_ARGS)
+    methods_markers = {
+        r'\CxMut-GP': 'o', r'\CxMut-GSGP': '*', r'\Cx-GSGP': 'd', r'\Mut-GSGP': 'D',
+        r'\CxMut-\slimplussigone': 'v', r'\CxMut-\slimplussigtwo': '^', r'\CxMut-\slimplusabs': 'X',
+        r'\Mut-\slimplussigone': '<', r'\Mut-\slimplussigtwo': '>', r'\Mut-\slimplusabs': 'P',
+    }
+
+    methods_markers_less = {
+        r'\CxMut-GP': 'o', r'\Cx-GSGP': 'd', r'\Mut-GSGP': 'D',
+        r'\CxMut-\slimplussigone': 'v', r'\CxMut-\slimplussigtwo': '^', r'\CxMut-\slimplusabs': 'X',
+        r'\Mut-\slimplussigone': '<', r'\Mut-\slimplussigtwo': '>', r'\Mut-\slimplusabs': 'P',
+    }
+
+    expl_pipe_alias = {'cx': r'\Cx', 'mut': r'\Mut', 'cxmut': r'\CxMut'}
+    methods_alias = {'GP': 'GP', 'GSGP': 'GSGP',
+                     'SLIM+': r'\slimplus', 'SLIM*': r'\slimmul',
+                     'SLIM+SIG1': r'\slimplussigone', 'SLIM+SIG2': r'\slimplussigtwo', 'SLIM+ABS': r'\slimplusabs',
+                     'SLIM*SIG1': r'\slimmulsigone', 'SLIM*SIG2': r'\slimmulsigtwo', 'SLIM*ABS': r'\slimmulabs'}
+    for radius in [1, 2, 3]:
+        for alias in list(methods_alias.keys()):
+            methods_alias['c' + alias + '_' + str(radius)] = methods_alias[alias] + '-' + r'\toroid{2}{' + str(
+                radius) + '}'
+    for expl_pipe in expl_pipe_alias:
+        for alias in list(methods_alias.keys()):
+            methods_alias[alias + '-' + expl_pipe] = expl_pipe_alias[expl_pipe] + '-' + methods_alias[alias]
+
+    #create_legend(palette, PLOT_ARGS=PLOT_ARGS)
+    #create_horizontal_linestyle_legend(expl_pipe_linestyle, PLOT_ARGS=PLOT_ARGS)
+    #create_marker_legend(methods_markers, PLOT_ARGS=PLOT_ARGS)
+
+    #create_boxplot(path=path + f'all_values.json', palette=palette, dataset_name='parkinson', algorithms=slim_versions, type_of_result='training_time', all_together=True, all_datasets=dataset_names, palette=palette, PLOT_ARGS=PLOT_ARGS)
+
+    for zoom in [False, True]:
+        methods_pareto_front(path + f'all_values.json', expl_pipe_alias=expl_pipe_alias, methods_alias=methods_alias, palette=palette, zoom=zoom, grid=False, to_normalize=True, algorithms=slim_versions, dataset_names=dataset_names, dataset_acronyms=dataset_acronyms, PLOT_ARGS=PLOT_ARGS)
+    #for type_of_result in ['best_overall_test_fitness', 'log_10_num_nodes', 'moran']:
+    #    lineplot_grid(path=path + f'all_values_for_each_gen.json', test=False, type_of_result=type_of_result, algorithms=slim_versions, dataset_names=dataset_names, dataset_acronyms=dataset_acronyms, expl_pipe_alias=expl_pipe_alias, methods_alias=methods_alias, num_gen=1000, num_seeds=30, aggregate=False, palette=palette, linestyles=expl_pipe_linestyle, linewidths=expl_pipe_linewidth, PLOT_ARGS=PLOT_ARGS)
 
 
 if __name__ == '__main__':

@@ -24,6 +24,8 @@ def create_input_files(base_output_file, param_combinations, num_files):
 
     base_filename = os.path.splitext(os.path.basename(base_output_file))[0]  # Extract base filename without extension
 
+    sep = ';'
+
     # Split param_combinations into num_files chunks
     num_files = min(num_files, len(param_combinations))  # Prevent empty files
     batch_size = math.ceil(len(param_combinations) / num_files)  # Ensure all items are distributed
@@ -39,7 +41,7 @@ def create_input_files(base_output_file, param_combinations, num_files):
 
         with open(output_file, "w") as f:
             for params in batch:
-                f.write(",".join(str(params[key]) for key in params.keys()) + "," + file_label + "\n")
+                f.write(sep.join(str(key) + sep + str(params[key]) for key in params.keys()) + sep + 'run_id' + sep + file_label + '\n')
 
         print(f"Generated input file: {output_file}")
 

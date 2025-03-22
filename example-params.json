@@ -1,0 +1,17 @@
+{
+    "seed_index": [1, 2],
+    "algorithm": ["slim+sig1", "slim+sig2", "slim*abs"],
+    "dataset": ["airfoil", "concrete"],
+    "pop_size": [100],
+    "n_iter": [3],
+    "n_elites": [1],
+    "pressure": [4],
+    "slim_crossover": ["sc"],
+    "p_inflate": [0.3],
+    "p_crossover": [0.0, 0.5],
+    "torus_dim": [2],
+    "pop_shape": ["10x10"],
+    "radius": [2, 3],
+    "cmp_rate": [1.0]
+}
+
